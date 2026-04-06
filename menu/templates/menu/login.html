@@ -1,0 +1,30 @@
+{% extends 'menu/base.html' %}
+{% block title %}Profilga kirish | Dietologiya{% endblock %}
+
+{% block content %}
+<section class="row justify-content-center">
+    <div class="col-lg-5">
+        <div class="content-panel">
+            <div class="section-heading">
+                <span class="eyebrow text-dark">TASHKILOT PROFIli</span>
+                <h1 class="section-title">Kabinetga kirish</h1>
+                <p class="text-muted mb-0">Natijalar va o'z retseptlaringizni ko'rish uchun login qiling.</p>
+            </div>
+            <form method="post" class="mt-4">
+                {% csrf_token %}
+                {{ form.non_field_errors }}
+                <div class="mb-3">
+                    <label class="form-label" for="{{ form.username.id_for_label }}">Login</label>
+                    {{ form.username }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="{{ form.password.id_for_label }}">Parol</label>
+                    {{ form.password }}
+                </div>
+                <button type="submit" class="btn btn-accent w-100">Kirish</button>
+            </form>
+        </div>
+    </div>
+</section>
+{% endblock %}
+

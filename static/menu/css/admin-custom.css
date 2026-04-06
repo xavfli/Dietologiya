@@ -1,0 +1,24 @@
+.org-admin-profile-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.9rem;
+    margin-right: 0.5rem;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #1f8f3a, #53c51a);
+    color: #fff;
+    font-weight: 600;
+    line-height: 1;
+    box-shadow: 0 10px 24px rgba(46, 150, 56, 0.18);
+}
+
+.org-admin-profile-link:hover,
+.org-admin-profile-link:focus {
+    color: #fff;
+    text-decoration: none;
+    filter: brightness(1.05);
+}
+
+.org-admin-profile-link i {
+    font-size: 0.9rem;
+}

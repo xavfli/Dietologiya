@@ -1,0 +1,109 @@
+from django.contrib import admin
+from django.contrib.admin import AdminSite
+from django.db.models import Q
+
+from .models import Diet, Dish, MealTime, MenuDay, MenuEntry
+
+
+class OrganizationAdminSite(AdminSite):
+    site_header = "Tashkilot kabineti"
+    site_title = "Tashkilot kabineti"
+    index_title = "Retsept va natijalarni boshqarish"
+
+    def has_permission(self, request):
+        return request.user.is_active and hasattr(request.user, "managed_organization")
+
+
+organization_admin_site = OrganizationAdminSite(name="organization_admin")
+
+
+class OrganizationScopedAdmin(admin.ModelAdmin):
+    organization_field = "organization"
+
+    def get_organization(self, request):
+        return request.user.managed_organization
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.filter(**{self.organization_field: self.get_organization(request)})
+
+    def save_model(self, request, obj, form, change):
+        setattr(obj, self.organization_field, self.get_organization(request))
+        super().save_model(request, obj, form, change)
+
+    def has_module_permission(self, request):
+        return hasattr(request.user, "managed_organization")
+
+    def has_view_permission(self, request, obj=None):
+        return hasattr(request.user, "managed_organization")
+
+    def has_add_permission(self, request):
+        return hasattr(request.user, "managed_organization")
+
+    def has_change_permission(self, request, obj=None):
+        return hasattr(request.user, "managed_organization")
+
+    def has_delete_permission(self, request, obj=None):
+        return hasattr(request.user, "managed_organization")
+
+
+@admin.register(Dish, site=organization_admin_site)
+class OrganizationDishAdmin(OrganizationScopedAdmin):
+    list_display = ("name", "diet", "duration_minutes", "total_calories", "total_cost")
+    list_filter = ("diet",)
+    fields = ("name", "diet", "duration_minutes", "description")
+    search_fields = ("name",)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "diet":
+            kwargs["queryset"] = Diet.objects.all()
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+
+@admin.register(MenuDay, site=organization_admin_site)
+class OrganizationMenuDayAdmin(OrganizationScopedAdmin):
+    list_display = ("date", "season", "diet", "people_count", "total_cost")
+    list_filter = ("season", "diet")
+    date_hierarchy = "date"
+    fields = ("date", "season", "diet", "people_count")
+
+
+@admin.register(MenuEntry, site=organization_admin_site)
+class OrganizationMenuEntryAdmin(admin.ModelAdmin):
+    list_display = ("menu_day", "mealtime", "dish", "portions", "total_cost")
+    fields = ("menu_day", "mealtime", "dish", "portions", "notes")
+
+    def get_organization(self, request):
+        return request.user.managed_organization
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).filter(menu_day__organization=self.get_organization(request))
+
+    def has_module_permission(self, request):
+        return hasattr(request.user, "managed_organization")
+
+    def has_view_permission(self, request, obj=None):
+        return hasattr(request.user, "managed_organization")
+
+    def has_add_permission(self, request):
+        return hasattr(request.user, "managed_organization")
+
+    def has_change_permission(self, request, obj=None):
+        return hasattr(request.user, "managed_organization")
+
+    def has_delete_permission(self, request, obj=None):
+        return hasattr(request.user, "managed_organization")
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        organization = self.get_organization(request)
+        if db_field.name == "menu_day":
+            kwargs["queryset"] = MenuDay.objects.filter(organization=organization)
+        elif db_field.name == "dish":
+            kwargs["queryset"] = Dish.objects.filter(Q(organization=organization) | Q(organization__isnull=True))
+        elif db_field.name == "mealtime":
+            kwargs["queryset"] = MealTime.objects.all()
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def save_model(self, request, obj, form, change):
+        obj.menu_day.organization = self.get_organization(request)
+        super().save_model(request, obj, form, change)

@@ -1,0 +1,80 @@
+<mxfile host="app.diagrams.net" agent="Codex">
+  <diagram id="dietologiya-idef0" name="Page-1">
+    <mxGraphModel dx="1363" dy="752" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="none" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontStyle=1;fontSize=20;" value="IDEF0: Ovqatlanish rejasini shakllantirish" vertex="1">
+          <mxGeometry height="30" width="420" x="324" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="function" parent="1" style="rounded=0;whiteSpace=wrap;html=1;strokeWidth=2;fontSize=18;align=center;verticalAlign=middle;" value="Ovqatlanish rejasini&#xa;shakllantirish" vertex="1">
+          <mxGeometry height="140" width="220" x="430" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="inputsLabel" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontStyle=1;fontSize=18;fontColor=#d90429;" value="Inputs" vertex="1">
+          <mxGeometry height="30" width="90" x="120" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="controlsLabel" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontStyle=1;fontSize=18;fontColor=#d90429;" value="Controls" vertex="1">
+          <mxGeometry height="30" width="100" x="495" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="outputsLabel" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontStyle=1;fontSize=18;fontColor=#d90429;" value="Outputs" vertex="1">
+          <mxGeometry height="30" width="100" x="760" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="mechanismsLabel" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontStyle=1;fontSize=18;fontColor=#d90429;" value="Mechanisms" vertex="1">
+          <mxGeometry height="30" width="130" x="430" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="inputsText" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=14;" value="Foydalanuvchi ma&#39;lumotlari&#xa;Yosh, vazn, bo&#39;y&#xa;Sog&#39;liq holati&#xa;Allergiyalar&#xa;Maqsad" vertex="1">
+          <mxGeometry height="120" width="180" x="70" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="controlsText" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=14;" value="Tibbiy qoidalar&#xa;Kaloriya me&#39;yorlari&#xa;Dietolog tavsiyalari&#xa;Ovqatlanish standartlari" vertex="1">
+          <mxGeometry height="80" width="260" x="420" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="outputsText" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=14;" value="Shaxsiy dieta reja&#xa;Kunlik menyu&#xa;Kaloriya hisoboti&#xa;Tavsiya etilgan ovqatlar&#xa;Foydalanuvchi tavsiyalari" vertex="1">
+          <mxGeometry height="130" width="220" x="744" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="mechanismsText" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=14;" value="Dietolog&#xa;Dasturiy tizim&#xa;Ma&#39;lumotlar bazasi&#xa;Hisoblash algoritmi&#xa;Administrator" vertex="1">
+          <mxGeometry height="130" width="200" x="440" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="inputArrow1" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;" target="function">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="260" y="330" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="controlArrow2" edge="1" parent="1" source="controlsText" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;exitX=0.462;exitY=1.125;exitDx=0;exitDy=0;exitPerimeter=0;" target="function">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="outputArrow1" edge="1" parent="1" source="function" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;entryX=-0.017;entryY=0.567;entryDx=0;entryDy=0;entryPerimeter=0;" target="outputsText">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="mechanismArrow2" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;" target="function">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="540" y="470" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="inputAnchor1" parent="1" style="ellipse;html=1;strokeColor=none;fillColor=none;" value="" vertex="1">
+          <mxGeometry height="10" width="10" x="250" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="inputAnchor2" parent="1" style="ellipse;html=1;strokeColor=none;fillColor=none;" value="" vertex="1">
+          <mxGeometry height="10" width="10" x="250" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="controlAnchor1" parent="1" style="ellipse;html=1;strokeColor=none;fillColor=none;" value="" vertex="1">
+          <mxGeometry height="10" width="10" x="485" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="controlAnchor2" parent="1" style="ellipse;html=1;strokeColor=none;fillColor=none;" value="" vertex="1">
+          <mxGeometry height="10" width="10" x="545" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="outputAnchor1" parent="1" style="ellipse;html=1;strokeColor=none;fillColor=none;" value="" vertex="1">
+          <mxGeometry height="10" width="10" x="775" y="305" as="geometry" />
+        </mxCell>
+        <mxCell id="outputAnchor2" parent="1" style="ellipse;html=1;strokeColor=none;fillColor=none;" value="" vertex="1">
+          <mxGeometry height="10" width="10" x="775" y="345" as="geometry" />
+        </mxCell>
+        <mxCell id="mechanismAnchor1" parent="1" style="ellipse;html=1;strokeColor=none;fillColor=none;" value="" vertex="1">
+          <mxGeometry height="10" width="10" x="485" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="mechanismAnchor2" parent="1" style="ellipse;html=1;strokeColor=none;fillColor=none;" value="" vertex="1">
+          <mxGeometry height="10" width="10" x="545" y="470" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

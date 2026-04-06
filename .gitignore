@@ -1,0 +1,11 @@
+*.py[cod]
+__pycache__/
+*.sqlite3
+*.sqlite3-journal
+/staticfiles/
+.env
+venv/
+.tmp_template/
+tmp_import/
+.DS_Store
+*.log

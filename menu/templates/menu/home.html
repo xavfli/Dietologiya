@@ -1,0 +1,169 @@
+{% extends 'menu/base.html' %}
+{% load static %}
+{% block title %}Bosh sahifa | Dietologiya{% endblock %}
+
+{% block content %}
+<section class="template-hero mb-5">
+    <div id="heroCarousel" class="carousel slide hero-carousel" data-bs-ride="carousel">
+        <div class="carousel-indicators">
+            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="1-slide"></button>
+            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1" aria-label="2-slide"></button>
+        </div>
+        <div class="carousel-inner">
+            <div class="carousel-item active">
+                <div class="hero-slide" style="background-image: linear-gradient(rgba(17, 17, 17, 0.45), rgba(17, 17, 17, 0.45)), url('{% static "menu/img/carousel-1.jpg" %}');">
+                    <div class="hero-overlay container">
+                        <div class="col-lg-8 px-0">
+                            <span class="eyebrow hero-eyebrow">TEXNIK TOPSHIRIQ ASOSIDA</span>
+                            <h1 class="hero-title template-title">Tashkilotlar uchun sog'lom va nazoratli ovqatlanish tizimi</h1>
+                            <p class="hero-text template-text">
+                                Dietologiya, parhez va taomnoma boshqaruvini bitta platformada birlashtirib,
+                                mahsulot tarkibi, oziq qiymati va kunlik hisob-kitoblarni aniq yuritishga yordam beradi.
+                            </p>
+                            <div class="d-flex flex-wrap gap-3 mt-4">
+                                <a href="{% url 'organization_list' %}" class="btn btn-primary rounded-pill py-3 px-5">Tashkilotlarni ko'rish</a>
+                                <a href="{% url 'login' %}" class="btn btn-outline-light rounded-pill py-3 px-5">Profilga kirish</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="carousel-item">
+                <div class="hero-slide" style="background-image: linear-gradient(rgba(17, 17, 17, 0.5), rgba(17, 17, 17, 0.5)), url('{% static "menu/img/carousel-2.jpg" %}');">
+                    <div class="hero-overlay container">
+                        <div class="col-lg-8 px-0">
+                            <span class="eyebrow hero-eyebrow">DIETOLOGIYA VA NAZORAT</span>
+                            <h2 class="hero-title template-title">Parhez, mahsulot tarkibi va kunlik ratsion bitta tizimda</h2>
+                            <p class="hero-text template-text">
+                                Tashkilotlar uchun menyu rejalash, oziq qiymatini nazorat qilish va
+                                foydalanuvchi kabineti orqali natijalarni ko'rish jarayonlari birlashtirilgan.
+                            </p>
+                            <div class="d-flex flex-wrap gap-3 mt-4">
+                                <a href="{% url 'news' %}" class="btn btn-primary rounded-pill py-3 px-5">Yangiliklar</a>
+                                <a href="{% url 'organization_list' %}" class="btn btn-outline-light rounded-pill py-3 px-5">Hamkorlar</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Oldingi</span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Keyingi</span>
+        </button>
+    </div>
+</section>
+
+{% if db_warning %}
+<div class="alert alert-warning border-0 shadow-sm mb-5" role="alert">
+    {{ db_warning }}
+</div>
+{% endif %}
+
+<section class="about-section py-5">
+    <div class="container px-0">
+        <div class="row g-5 align-items-center">
+            <div class="col-lg-6">
+                <div class="about-img position-relative overflow-hidden p-5 pe-0 reveal-on-scroll">
+                    <img class="img-fluid w-100 rounded-4 shadow-sm" src="{% static 'menu/img/about.jpg' %}" alt="Dietologiya">
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="section-heading section-header text-start">
+                    <h2 class="section-title mb-4">Dietologiya va to'g'ri ovqatlanish haqida</h2>
+                    <p class="text-muted mb-4">
+                        Dietologiya inson salomatligi uchun kerakli ovqatlanish tartibini shakllantiradi.
+                        Tashkilotlarda to'g'ri tuzilgan taomnoma ish unumdorligi, bolalar va kattalar salomatligi hamda kunlik energiya balansini qo'llab-quvvatlaydi.
+                    </p>
+                </div>
+                <div class="about-checklist">
+                    {% for item in dietology_info %}
+                    <div class="about-check">
+                        <span class="check-icon">+</span>
+                        <div>
+                            <h3>{{ item.title }}</h3>
+                            <p>{{ item.text }}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="feature-band my-5 py-6">
+    <div class="container">
+        <div class="section-header text-center mx-auto mb-5" style="max-width: 620px;">
+            <h2 class="section-title mb-3">Platforma imkoniyatlari</h2>
+            <p class="text-muted mb-0">Template uslubidagi frontend va dietologiya ma'lumotlari mavjud tizim funksiyalari bilan birlashtirildi.</p>
+        </div>
+        <div class="row g-4">
+            {% for feature in platform_features %}
+            <div class="col-lg-4 col-md-6">
+                <article class="template-feature h-100 p-4 p-xl-5 reveal-on-scroll">
+                    <div class="feature-index mb-3">{{ feature.index }}</div>
+                    <img class="img-fluid mb-4 feature-icon" src="{% static feature.icon %}" alt="">
+                    <h3 class="mb-3">{{ feature.title }}</h3>
+                    <p class="mb-0">{{ feature.text }}</p>
+                </article>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<section class="mb-5">
+    <div class="section-heading section-header text-center mx-auto" style="max-width: 640px;">
+        <h2 class="section-title">Dietologiya bo'yicha muhim jihatlar</h2>
+        <p class="text-muted mb-0">Tizimning amaliy imkoniyatlari dietologiyaning asosiy tamoyillari bilan bog'langan.</p>
+    </div>
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
+        {% for feature in about_points %}
+        <div class="col">
+            <article class="feature-card h-100">
+                <div class="feature-index">0{{ forloop.counter }}</div>
+                <h3>{{ feature.title }}</h3>
+                <p>{{ feature.text }}</p>
+            </article>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="mb-5">
+    <div class="section-heading section-header text-center mx-auto mb-5" style="max-width: 620px;">
+        <h2 class="section-title mb-3">Hamkor tashkilotlar</h2>
+        <p class="text-muted mb-0">Platformaga ulangan tashkilotlar bilan ovqatlanish tizimi va taomnoma nazorati olib boriladi.</p>
+    </div>
+    <div class="d-flex justify-content-center mb-4">
+        <a href="{% url 'organization_list' %}" class="btn btn-outline-dark">Barchasini ko'rish</a>
+    </div>
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
+        {% for org in organizations %}
+        <div class="col">
+            <article class="org-card h-100">
+                <div class="org-badge">Tashkilot</div>
+                <h3>{{ org.name }}</h3>
+                <p>{{ org.address|default:"Manzil kiritilmagan" }}</p>
+                <div class="org-meta">
+                    <span>{{ org.contact|default:"Aloqa kiritilmagan" }}</span>
+                    <span>{{ org.menu_days_count }} ta menyu</span>
+                </div>
+            </article>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="empty-panel">
+                Hozircha tashkilotlar kiritilmagan. Admin panel orqali ma'lumot qo'shilgach bu blok real statistikani chiqaradi.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}
+

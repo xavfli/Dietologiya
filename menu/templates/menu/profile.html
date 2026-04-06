@@ -1,0 +1,162 @@
+{% extends 'menu/base.html' %}
+{% block title %}Profil | Dietologiya{% endblock %}
+
+{% block content %}
+<section class="profile-hero mb-5">
+    <div class="profile-hero__shell">
+        <div class="profile-hero__glow profile-hero__glow--one"></div>
+        <div class="profile-hero__glow profile-hero__glow--two"></div>
+        <div class="d-flex flex-column flex-xl-row justify-content-between gap-4 align-items-xl-end position-relative">
+            <div class="profile-hero__content">
+                <span class="eyebrow profile-hero__eyebrow">NATIJALAR</span>
+                <h1 class="profile-hero__title">{{ organization.name }}</h1>
+                <p class="profile-hero__text">Bu sahifada tashkilotingiz uchun shakllangan menyu natijalari, parhez tarkibi va kunlik hisob-kitoblar ko'rsatiladi.</p>
+            </div>
+            <div class="profile-hero__actions">
+                <a href="{% url 'profile_export_word' %}" class="btn btn-outline-light btn-lg rounded-pill px-4">Word yuklab olish</a>
+                <a href="/organization-admin/" class="btn btn-accent btn-lg rounded-pill px-4">Tashkilot kabineti</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="mb-5 profile-stats">
+    <div class="profile-shell">
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="profile-stat-card h-100">
+                    <div class="profile-stat-card__icon">01</div>
+                    <div class="profile-stat-card__value">{{ menu_summaries|length }}</div>
+                    <div class="profile-stat-card__label">Menyu kunlari</div>
+                    <div class="profile-stat-card__meta">tashkilot bo'yicha</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="profile-stat-card h-100">
+                    <div class="profile-stat-card__icon">02</div>
+                    <div class="profile-stat-card__value profile-stat-card__value--small">{{ organization.contact|default:"-" }}</div>
+                    <div class="profile-stat-card__label">Aloqa</div>
+                    <div class="profile-stat-card__meta">profil ma'lumoti</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="profile-stat-card h-100">
+                    <div class="profile-stat-card__icon">03</div>
+                    <div class="profile-stat-card__value profile-stat-card__value--small">{{ organization.address|default:"-" }}</div>
+                    <div class="profile-stat-card__label">Manzil</div>
+                    <div class="profile-stat-card__meta">profil ma'lumoti</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="profile-results">
+    <div class="profile-shell">
+        <div class="section-heading profile-results__heading">
+            <span class="eyebrow text-dark">KUNLIK NATIJALAR</span>
+            <h2 class="section-title">Shakllangan taomnomalar</h2>
+        </div>
+        {% if menu_summaries %}
+        <div class="profile-calendar" data-profile-calendar>
+            <div class="profile-calendar__month">{{ calendar_month_label }}</div>
+            <div class="profile-calendar__weekdays">
+                {% for weekday in calendar_weekdays %}
+                <div class="profile-calendar__weekday">{{ weekday }}</div>
+                {% endfor %}
+            </div>
+            <div class="profile-calendar__grid" role="tablist" aria-label="Menyu kunlari">
+                {% for day in calendar_days %}
+                {% if day.summary %}
+                <button
+                    type="button"
+                    class="profile-calendar__day{% if day.is_selected %} is-active{% endif %}{% if not day.is_current_month %} is-outside{% endif %}{% if day.is_today %} is-today{% endif %}"
+                    data-day-trigger="{{ day.summary.day_key }}"
+                    role="tab"
+                    aria-selected="{% if day.is_selected %}true{% else %}false{% endif %}"
+                >
+                    <span class="profile-calendar__day-number">{{ day.date|date:"d" }}</span>
+                    <span class="profile-calendar__day-label">{{ day.date|date:"D" }}</span>
+                </button>
+                {% else %}
+                <div class="profile-calendar__day is-empty{% if not day.is_current_month %} is-outside{% endif %}">
+                    <span class="profile-calendar__day-number">{{ day.date|date:"d" }}</span>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+
+            <div class="profile-calendar__summary">
+                <div class="profile-calendar__summary-card">
+                    <span class="profile-calendar__summary-label">Jami kunlar</span>
+                    <strong>{{ profile_overview.days_count }}</strong>
+                </div>
+                <div class="profile-calendar__summary-card">
+                    <span class="profile-calendar__summary-label">Jami taomlanuvchi</span>
+                    <strong>{{ profile_overview.people_total }}</strong>
+                </div>
+                <div class="profile-calendar__summary-card">
+                    <span class="profile-calendar__summary-label">Umumiy narx</span>
+                    <strong>{{ profile_overview.cost_total|floatformat:0 }} so'm</strong>
+                </div>
+                <div class="profile-calendar__summary-card">
+                    <span class="profile-calendar__summary-label">Umumiy kaloriya</span>
+                    <strong>{{ profile_overview.calories_total }}</strong>
+                </div>
+            </div>
+
+            <div class="profile-calendar__details">
+                {% for summary in menu_summaries %}
+                <article class="profile-menu-card mb-4{% if selected_day_id != summary.day_key %} d-none{% endif %}" data-day-panel="{{ summary.day_key }}">
+                    <div class="profile-menu-card__top">
+                        <div class="profile-menu-card__date">
+                            <h3 class="mb-1">{{ summary.day.date|date:"d.m.Y" }}</h3>
+                            <div class="text-muted">
+                                {{ summary.day.season }} ·
+                                {% if summary.day.diet %}{{ summary.day.diet.title }}{% else %}Standart{% endif %}
+                            </div>
+                        </div>
+                        <div class="profile-menu-card__totals">
+                            <div class="profile-menu-card__badge"><strong>{{ summary.day.people_count }}</strong> nafar</div>
+                            <div class="profile-menu-card__badge"><strong>{{ summary.total_cost|floatformat:0 }}</strong> so'm</div>
+                            <div class="profile-menu-card__badge"><strong>{{ summary.total_calories }}</strong> kal</div>
+                        </div>
+                    </div>
+                    {% for mealtime, entries in summary.groups %}
+                    <div class="profile-mealtime-block mb-3">
+                        <div class="profile-mealtime-block__title">{{ mealtime }}</div>
+                        <div class="table-responsive">
+                            <table class="table app-table profile-table align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Taom</th>
+                                        <th>Porsiya</th>
+                                        <th>Kaloriya</th>
+                                        <th>Narx</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for entry in entries %}
+                                    <tr>
+                                        <td class="profile-table__dish">{{ entry.dish.name }}</td>
+                                        <td>{{ entry.portions }}</td>
+                                        <td>{{ entry.total_calories }}</td>
+                                        <td>{{ entry.total_cost|floatformat:0 }} so'm</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-panel">Hozircha profilingiz uchun natijalar mavjud emas.</div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+
