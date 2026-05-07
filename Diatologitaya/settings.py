@@ -1,5 +1,7 @@
 import os
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
+
 import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -48,10 +50,12 @@ known_database_schemes = {
     "timescale",
     "timescalegis",
 }
-if database_url and "://" in database_url:
-    database_scheme, database_location = database_url.split("://", 1)
-    if database_scheme.lower() not in known_database_schemes:
-        database_url = f"postgresql://{database_location.lstrip('/')}"
+if database_url.startswith("://"):
+    database_url = f"postgresql{database_url}"
+elif database_url and "://" in database_url:
+    split_database_url = urlsplit(database_url)
+    if split_database_url.scheme.lower() not in known_database_schemes:
+        database_url = urlunsplit(("postgresql", split_database_url.netloc, split_database_url.path, split_database_url.query, split_database_url.fragment))
 
 INSTALLED_APPS = [
     "jazzmin",
