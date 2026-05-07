@@ -27,9 +27,31 @@ else:
 default_sqlite_dir.mkdir(parents=True, exist_ok=True)
 default_sqlite_path = Path(os.environ.get("DJANGO_SQLITE_PATH", str(default_sqlite_dir / "db.sqlite3")))
 default_database_url = f"sqlite:///{default_sqlite_path}"
-database_url = os.environ.get("DATABASE_URL", "").strip()
-if database_url.startswith("://"):
-    database_url = f"postgresql{database_url}"
+database_url = os.environ.get("DATABASE_URL", "").strip().strip("\"'")
+known_database_schemes = {
+    "cockroach",
+    "mssql",
+    "mssqlms",
+    "mysql",
+    "mysql-connector",
+    "mysql2",
+    "mysqlgis",
+    "oracle",
+    "oraclegis",
+    "pgsql",
+    "postgis",
+    "postgres",
+    "postgresql",
+    "redshift",
+    "spatialite",
+    "sqlite",
+    "timescale",
+    "timescalegis",
+}
+if database_url and "://" in database_url:
+    database_scheme, database_location = database_url.split("://", 1)
+    if database_scheme.lower() not in known_database_schemes:
+        database_url = f"postgresql://{database_location.lstrip('/')}"
 
 INSTALLED_APPS = [
     "jazzmin",
