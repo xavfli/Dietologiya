@@ -120,6 +120,28 @@ Excel fayllar to'plamini ZIP orqali import qilish:
 python manage.py import_menu_zip --zip-path path\to\menu.zip --organization "Tashkilot nomi" --year 2026
 ```
 
+## Renderga Deploy Qilish
+
+1. Render dashboardda `New` -> `Postgres` tanlang va database yarating.
+2. Yaratilgan database ichidan `Internal Database URL` qiymatini nusxalang.
+3. `New` -> `Web Service` tanlang.
+4. GitHub repository sifatida `xavfli/Dietologiya` ni ulang.
+5. Sozlamalarni kiriting:
+
+- Runtime: `Python 3`
+- Branch: `main`
+- Build Command: `./build.sh`
+- Start Command: `gunicorn Diatologitaya.wsgi --log-file -`
+
+6. Environment variables bo'limiga qo'shing:
+
+- `DATABASE_URL` - Render Postgres `Internal Database URL`
+- `DJANGO_SECRET_KEY` - xavfsiz secret key
+- `DJANGO_DEBUG` - `False`
+- `WEB_CONCURRENCY` - `4`
+
+Render `RENDER_EXTERNAL_HOSTNAME` qiymatini avtomatik beradi. Shu sabab `.onrender.com` domen `ALLOWED_HOSTS` va `CSRF_TRUSTED_ORIGINS` ro'yxatiga avtomatik qo'shiladi.
+
 ## Xato Sahifalari
 
 Production rejimida quyidagi xatolar maxsus sahifa orqali ko'rsatiladi:
