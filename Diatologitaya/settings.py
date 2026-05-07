@@ -30,7 +30,7 @@ else:
     default_sqlite_dir = BASE_DIR
 default_sqlite_dir.mkdir(parents=True, exist_ok=True)
 default_sqlite_path = Path(os.environ.get("DJANGO_SQLITE_PATH", str(default_sqlite_dir / "db.sqlite3")))
-default_database_url = f"sqlite:///{default_sqlite_path}"
+default_database_url = f"sqlite:///{default_sqlite_path.as_posix()}"
 database_url = os.environ.get("DATABASE_URL", "").strip().strip("\"'")
 known_database_schemes = {
     "cockroach",

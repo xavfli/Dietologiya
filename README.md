@@ -139,12 +139,27 @@ python manage.py import_menu_zip --zip-path path\to\menu.zip --organization "Tas
 - `DJANGO_SECRET_KEY` - xavfsiz secret key
 - `DJANGO_DEBUG` - `False`
 - `DJANGO_ADMIN_PATH` - admin panel manzili, masalan `secure-admin/`
+- `DJANGO_SUPERUSER_USERNAME` - admin login
+- `DJANGO_SUPERUSER_PASSWORD` - admin parol
+- `DJANGO_SUPERUSER_EMAIL` - admin email, ixtiyoriy
 - `PYTHON_VERSION` - `3.12`
 - `WEB_CONCURRENCY` - `4`
 
 Render `RENDER_EXTERNAL_HOSTNAME` qiymatini avtomatik beradi. Shu sabab `.onrender.com` domen `ALLOWED_HOSTS` va `CSRF_TRUSTED_ORIGINS` ro'yxatiga avtomatik qo'shiladi.
 `DATABASE_URL` qiymati to'liq bo'lishi kerak, masalan `postgresql://...` bilan boshlanadi.
 `DATABASE_URL` noto'g'ri kiritilsa, loyiha build paytida yiqilmaslik uchun SQLite fallback ishlatadi, lekin production uchun Render Postgres `Internal Database URL` qiymatini to'g'ri qo'yish shart.
+`<Postgres Internal Database URL>` yoki `<Generate qilingan secret>` kabi placeholder matnlarni qoldirmang; ularning o'rniga haqiqiy qiymat yozing.
+
+### Renderda Admin Yaratish
+
+Build jarayonida `python manage.py ensure_superuser` ishga tushadi. Bu command adminni faqat quyidagi env o'zgaruvchilar berilganda yaratadi:
+
+- `DJANGO_SUPERUSER_USERNAME`
+- `DJANGO_SUPERUSER_PASSWORD`
+- `DJANGO_SUPERUSER_EMAIL` ixtiyoriy
+
+Kodda default login yoki default parol yo'q. Agar env qiymatlar berilmasa, admin yaratish o'tkazib yuboriladi.
+Admin mavjud bo'lsa, qayta yaratilmaydi. Parolni majburan yangilash kerak bo'lsa, vaqtincha `DJANGO_SUPERUSER_UPDATE_PASSWORD=True` qo'shib deploy qiling, keyin uni olib tashlang.
 
 ## Xato Sahifalari
 
@@ -164,6 +179,9 @@ Production rejimida quyidagi xatolar maxsus sahifa orqali ko'rsatiladi:
 - `DATABASE_URL`
 - `DJANGO_SQLITE_PATH`
 - `DJANGO_ADMIN_PATH`
+- `DJANGO_SUPERUSER_USERNAME`
+- `DJANGO_SUPERUSER_PASSWORD`
+- `DJANGO_SUPERUSER_EMAIL`
 - `PYTHON_VERSION`
 
 ## Tekshirish
