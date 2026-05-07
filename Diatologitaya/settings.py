@@ -57,6 +57,22 @@ elif database_url and "://" in database_url:
     if split_database_url.scheme.lower() not in known_database_schemes:
         database_url = urlunsplit(("postgresql", split_database_url.netloc, split_database_url.path, split_database_url.query, split_database_url.fragment))
 
+try:
+    default_database_config = dj_database_url.parse(
+        database_url or default_database_url,
+        conn_max_age=600,
+    )
+    if (
+        default_database_config["ENGINE"] == "django.db.backends.postgresql"
+        and (not default_database_config.get("HOST") or not default_database_config.get("NAME"))
+    ):
+        raise ValueError("Incomplete PostgreSQL DATABASE_URL")
+except Exception:
+    default_database_config = dj_database_url.parse(
+        default_database_url,
+        conn_max_age=600,
+    )
+
 INSTALLED_APPS = [
     "jazzmin",
     "django.contrib.admin",
@@ -100,10 +116,7 @@ TEMPLATES = [
 WSGI_APPLICATION = "Diatologitaya.wsgi.application"
 
 DATABASES = {
-    "default": dj_database_url.parse(
-        database_url or default_database_url,
-        conn_max_age=600,
-    )
+    "default": default_database_config
 }
 
 AUTH_PASSWORD_VALIDATORS = [

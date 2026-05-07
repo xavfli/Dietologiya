@@ -143,6 +143,7 @@ python manage.py import_menu_zip --zip-path path\to\menu.zip --organization "Tas
 
 Render `RENDER_EXTERNAL_HOSTNAME` qiymatini avtomatik beradi. Shu sabab `.onrender.com` domen `ALLOWED_HOSTS` va `CSRF_TRUSTED_ORIGINS` ro'yxatiga avtomatik qo'shiladi.
 `DATABASE_URL` qiymati to'liq bo'lishi kerak, masalan `postgresql://...` bilan boshlanadi.
+`DATABASE_URL` noto'g'ri kiritilsa, loyiha build paytida yiqilmaslik uchun SQLite fallback ishlatadi, lekin production uchun Render Postgres `Internal Database URL` qiymatini to'g'ri qo'yish shart.
 
 ## Xato Sahifalari
 
