@@ -149,6 +149,7 @@ Render `RENDER_EXTERNAL_HOSTNAME` qiymatini avtomatik beradi. Shu sabab `.onrend
 `DATABASE_URL` qiymati to'liq bo'lishi kerak, masalan `postgresql://...` bilan boshlanadi.
 `DATABASE_URL` noto'g'ri kiritilsa, loyiha build paytida yiqilmaslik uchun SQLite fallback ishlatadi, lekin production uchun Render Postgres `Internal Database URL` qiymatini to'g'ri qo'yish shart.
 `<Postgres Internal Database URL>` yoki `<Generate qilingan secret>` kabi placeholder matnlarni qoldirmang; ularning o'rniga haqiqiy qiymat yozing.
+Static fayllar Render build paytida WhiteNoise orqali compressed holatda yig'iladi. Vendor JavaScript ichidagi yo'q `.map` havolalar buildni yiqitmasligi uchun manifest talab qilmaydigan compressed storage ishlatiladi.
 
 ### Renderda Admin Yaratish
 
