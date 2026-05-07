@@ -6,6 +6,7 @@ from decimal import Decimal
 from django.contrib.auth import logout
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView
+from django.db import connection
 from django.db import OperationalError
 from django.db.models import Count, Prefetch
 from django.http import HttpResponseRedirect, HttpResponse
@@ -481,3 +482,13 @@ class AllMenuWordExportView(LoginRequiredMixin, TemplateView):
 def logout_view(request):
     logout(request)
     return HttpResponseRedirect(reverse("home"))
+
+
+def health_check(request):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+    except Exception:
+        return HttpResponse("unhealthy", status=503, content_type="text/plain")
+    return HttpResponse("ok", content_type="text/plain")

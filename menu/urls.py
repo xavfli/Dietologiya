@@ -7,6 +7,7 @@ from .views import (
     OrganizationListView,
     OrganizationLoginView,
     ProfileView,
+    health_check,
     logout_view,
 )
 
@@ -18,5 +19,6 @@ urlpatterns = [
     path("profile/", ProfileView.as_view(), name="profile"),
     path("profile/export-word/", LatestMenuWordExportView.as_view(), name="profile_export_word"),
     path("profile/export-all-word/", AllMenuWordExportView.as_view(), name="profile_export_all_word"),
+    path("healthz", health_check, name="health_check"),
     path("logout/", logout_view, name="logout"),
 ]
