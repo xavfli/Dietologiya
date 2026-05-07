@@ -1,0 +1,16 @@
+{% extends 'menu/base.html' %}
+{% block title %}{{ status_code }} | Dietologiya{% endblock %}
+
+{% block content %}
+<section class="inner-hero mb-5">
+    <div class="container text-center position-relative">
+        <span class="eyebrow text-white">{{ status_code }}</span>
+        <h1 class="display-5 fw-bold mt-3">{{ error_title }}</h1>
+        <p class="lead mx-auto mt-3 error-page__text">{{ error_text }}</p>
+        <div class="d-flex flex-column flex-sm-row justify-content-center gap-3 mt-4">
+            <a href="{% url 'home' %}" class="btn btn-light rounded-pill px-4">Bosh sahifa</a>
+            <a href="{% url 'login' %}" class="btn btn-outline-light rounded-pill px-4">Profilga kirish</a>
+        </div>
+    </div>
+</section>
+{% endblock %}

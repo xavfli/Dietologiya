@@ -10,3 +10,8 @@ urlpatterns = [
     path("favicon.ico", RedirectView.as_view(url="/static/menu/favicon.svg", permanent=True)),
     path("", include("menu.urls")),
 ]
+
+handler400 = "menu.error_views.bad_request"
+handler403 = "menu.error_views.permission_denied"
+handler404 = "menu.error_views.page_not_found"
+handler500 = "menu.error_views.server_error"

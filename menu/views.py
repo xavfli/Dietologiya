@@ -405,10 +405,68 @@ class LatestMenuWordExportView(LoginRequiredMixin, TemplateView):
             )
         rows.append(["Jami", "", "", f"{total_cost.quantize(Decimal('1'))} so'm"])
 
-        file_name = f"{organization.name}-{menu_day.date.isoformat()}-mahsulot-hisoboti.docx"
+        file_name = f"{organization.name}-{menu_day.date.isoformat()}-bir-kunlik-xarajatlar.docx"
         content = build_docx(
-            title=f"{organization.name} uchun mahsulot hisoboti",
+            title=f"{organization.name} uchun bir kunlik xarajatlar hisoboti",
             subtitle=f"Sana: {menu_day.date.isoformat()}",
+            headers=["Mahsulot", "Miqdor", "Birlik", "Jami narx"],
+            rows=rows,
+        )
+        response = HttpResponse(
+            content,
+            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+        response["Content-Disposition"] = f'attachment; filename="{file_name}"'
+        return response
+
+
+class AllMenuWordExportView(LoginRequiredMixin, TemplateView):
+    login_url = reverse_lazy("login")
+
+    def dispatch(self, request, *args, **kwargs):
+        if not hasattr(request.user, "managed_organization"):
+            return redirect("login")
+        organization = request.user.managed_organization
+        menu_days = list(
+            MenuDay.objects.filter(organization=organization)
+            .prefetch_related("entries__dish__ingredients__product")
+            .order_by("date")
+        )
+        if not menu_days:
+            return redirect("profile")
+
+        totals = defaultdict(lambda: {"quantity": Decimal("0"), "cost": Decimal("0"), "unit": "g"})
+        for menu_day in menu_days:
+            for entry in menu_day.entries.all():
+                for ingredient in entry.dish.ingredients.select_related("product").all():
+                    bucket = totals[ingredient.product.name]
+                    bucket["unit"] = ingredient.product.unit
+                    bucket["quantity"] += Decimal(ingredient.grams) * Decimal(entry.portions)
+                    bucket["cost"] += ingredient.cost_amount * Decimal(entry.portions)
+
+        rows = []
+        total_cost = Decimal("0")
+        for product_name in sorted(totals):
+            item = totals[product_name]
+            total_cost += item["cost"]
+            quantity_kg = (item["quantity"] / Decimal("1000")).quantize(Decimal("0.001"))
+            rows.append(
+                [
+                    product_name,
+                    f"{quantity_kg}",
+                    "kg",
+                    f"{item['cost'].quantize(Decimal('1'))} so'm",
+                ]
+            )
+        rows.append(["Jami", "", "", f"{total_cost.quantize(Decimal('1'))} so'm"])
+
+        start_date = menu_days[0].date.isoformat()
+        end_date = menu_days[-1].date.isoformat()
+        date_range = start_date if start_date == end_date else f"{start_date} - {end_date}"
+        file_name = f"{organization.name}-{start_date}-{end_date}-barcha-xarajatlar.docx"
+        content = build_docx(
+            title=f"{organization.name} uchun barcha xarajatlar hisoboti",
+            subtitle=f"Davr: {date_range}. Menyu kunlari: {len(menu_days)}",
             headers=["Mahsulot", "Miqdor", "Birlik", "Jami narx"],
             rows=rows,
         )
