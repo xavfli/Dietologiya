@@ -1,40 +1,51 @@
 # Dietologiya
 
-`Dietologiya` Django asosida qurilgan ovqatlanish va parhez boshqaruv platformasi. Tizim tashkilotlar uchun kunlik menyu, taom tarkibi, mahsulot qiymati va oziq ko'rsatkichlarini markazlashgan tarzda yuritishga xizmat qiladi.
+`Dietologiya` - Django asosida qurilgan ovqatlanish va parhez boshqaruv platformasi. Loyiha tashkilotlar uchun kunlik menyu, taom tarkibi, mahsulot sarfi, oziq qiymati va xarajatlarni markazlashgan tarzda yuritishga yordam beradi.
 
-## Asosiy imkoniyatlar
+## Imkoniyatlar
 
-- Tashkilot, mavsum, parhez, ovqatlanish vaqti, mahsulot, taom va kunlik menyu uchun to'liq model
+- Tashkilot, mavsum, parhez, ovqatlanish vaqti, mahsulot, taom va kunlik menyu modellarini boshqarish
 - Taom va menyu bo'yicha oqsil, yog', uglevod, kaloriya va tannarxni avtomatik hisoblash
-- Ikki boshqaruv qismi:
-  - Global admin (`/admin/`) - faqat maxsus link orqali
-  - Tashkilot kabineti (`/organization-admin/`)
-- Tashkilot foydalanuvchilari uchun login/profil sahifasi va Word eksport
-  - `Bir kunlik xarajatlar` - eng so'nggi menyu kuni bo'yicha mahsulot va narx hisoboti
-  - `Barcha xarajatlar` - tashkilotdagi barcha menyu kunlari bo'yicha umumiy mahsulot va xarajat hisoboti
-- Demo ma'lumotlarni bir buyruq bilan yaratish (`seed_demo_data`)
-- `Yangiliklar` sahifasi (`/news/`)
-- 400, 403, 404 va 500 xatolari uchun foydalanuvchiga tushunarli sahifalar
-- Responsive frontend (Django templates + Bootstrap + custom CSS/JS)
-- Global UI effektlar: reveal-on-scroll, hover/tilt, ripple, yumshoq animatsiyalar
+- Global admin panel: `/admin/`
+- Tashkilot kabineti: `/organization-admin/`
+- Tashkilot foydalanuvchilari uchun login va profil sahifasi
+- Word formatida xarajat hisobotlarini yuklab olish
+- Demo ma'lumotlarni `seed_demo_data` buyrug'i bilan yaratish
+- ZIP orqali menyu ma'lumotlarini import qilish
+- Yangiliklar sahifasi: `/news/`
+- 400, 403, 404 va 500 xatolari uchun maxsus sahifalar
+- Responsive frontend va global UI effektlar
+
+## Word Hisobotlar
+
+Profil sahifasida ikki xil Word eksport mavjud:
+
+- `Bir kunlik xarajatlar` - oxirgi menyu kuni bo'yicha mahsulot miqdori va jami narxni chiqaradi.
+- `Barcha xarajatlar` - tashkilotdagi barcha menyu kunlarini jamlaydi. Agar tizimga 1 oylik menyu kiritilgan bo'lsa, 1 oylik umumiy mahsulot sarfi va xarajat Word faylga tushadi.
+
+URL manzillar:
+
+- `/profile/export-word/`
+- `/profile/export-all-word/`
 
 ## Texnologiyalar
 
 - Python 3.12+
 - Django 4.2
-- SQLite (lokal), PostgreSQL (production)
+- SQLite lokal muhit uchun
+- PostgreSQL production uchun
 - WhiteNoise
 - Jazzmin
 
-## Loyiha tuzilmasi
+## Loyiha Tuzilmasi
 
-- `Diatologitaya/` - Django konfiguratsiyasi (`settings.py`, `urls.py`, `wsgi.py`)
-- `menu/` - modellar, viewlar, admin, management commandlar
-- `menu/templates/` - foydalanuvchi interfeysi sahifalari
-- `static/` - CSS, JS, rasm va ikonlar
-- `manage.py` - boshqaruv skripti
+- `Diatologitaya/` - Django konfiguratsiyasi
+- `menu/` - modellar, viewlar, admin, URL va management commandlar
+- `menu/templates/` - foydalanuvchi sahifalari
+- `static/` - CSS, JavaScript, rasm va ikonlar
+- `manage.py` - Django boshqaruv fayli
 
-## Lokal ishga tushirish (Windows)
+## Lokal Ishga Tushirish
 
 1. Virtual muhit yarating:
 
@@ -54,7 +65,7 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. Muhit o'zgaruvchilari (minimal):
+4. Muhit o'zgaruvchilarini sozlang:
 
 ```bash
 set DJANGO_DEBUG=True
@@ -62,7 +73,7 @@ set DJANGO_SECRET_KEY=change-me
 set DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost,dietologiya.local
 ```
 
-5. Migratsiyalar:
+5. Migratsiyalarni ishga tushiring:
 
 ```bash
 python manage.py migrate
@@ -84,17 +95,32 @@ python manage.py runserver
 
 - `http://127.0.0.1:8000/`
 - `http://127.0.0.1:8000/news/`
-- `http://127.0.0.1:8000/admin/` (maxsus link)
+- `http://127.0.0.1:8000/admin/`
 - `http://127.0.0.1:8000/organization-admin/`
 
-## Word eksport
+## Demo Ma'lumotlar
 
-Profil sahifasida tashkilot foydalanuvchisi uchun ikki xil Word hisobot bor:
+Demo tashkilot, foydalanuvchi, mahsulot, taom va menyu yozuvlarini yaratish:
 
-- `Bir kunlik xarajatlar` (`/profile/export-word/`) - oxirgi menyu kuni uchun mahsulot miqdori va jami narxni chiqaradi.
-- `Barcha xarajatlar` (`/profile/export-all-word/`) - tashkilotdagi barcha menyu kunlarini jamlaydi. Masalan, tizimga 1 oylik menyu kiritilgan bo'lsa, 1 oylik umumiy mahsulot sarfi va xarajat Word faylga tushadi.
+```bash
+python manage.py seed_demo_data
+```
 
-## Xato sahifalari
+Demo login ma'lumotlari:
+
+- Tashkilot: `Sog'lom Avlod MTT`
+- Login: `soglom_avlod`
+- Parol: `OrgDemo2026!`
+
+## ZIP Orqali Import
+
+Excel fayllar to'plamini ZIP orqali import qilish:
+
+```bash
+python manage.py import_menu_zip --zip-path path\to\menu.zip --organization "Tashkilot nomi" --year 2026
+```
+
+## Xato Sahifalari
 
 Production rejimida quyidagi xatolar maxsus sahifa orqali ko'rsatiladi:
 
@@ -103,26 +129,7 @@ Production rejimida quyidagi xatolar maxsus sahifa orqali ko'rsatiladi:
 - `404` - sahifa topilmadi
 - `500` - server xatosi
 
-## Demo ma'lumotlar
-
-```bash
-python manage.py seed_demo_data
-```
-
-Buyruq natijasi:
-
-- demo tashkilot: `Sog'lom Avlod MTT`
-- login: `soglom_avlod`
-- parol: `OrgDemo2026!`
-- mahsulot, taom va menyu yozuvlari
-
-## ZIP orqali import
-
-```bash
-python manage.py import_menu_zip --zip-path path\to\menu.zip --organization "Tashkilot nomi" --year 2026
-```
-
-## Muhim ENV o'zgaruvchilar
+## Muhim ENV O'zgaruvchilar
 
 - `DJANGO_SECRET_KEY`
 - `DJANGO_DEBUG`
@@ -131,8 +138,16 @@ python manage.py import_menu_zip --zip-path path\to\menu.zip --organization "Tas
 - `DATABASE_URL`
 - `DJANGO_SQLITE_PATH`
 
+## Tekshirish
+
+O'zgarishlardan keyin Django tekshiruvini ishga tushiring:
+
+```bash
+python manage.py check
+```
+
 ## Eslatma
 
-- Admin tugmasi UI'da ko'rsatilmaydi, admin faqat `/admin/` manzili orqali ochiladi.
-- Lokalda SQLite ishlatiladi; production uchun PostgreSQL tavsiya etiladi.
-- O'zgarishlarni tekshirish uchun `python manage.py check` ishlating.
+- Lokal muhitda SQLite ishlatiladi.
+- Production uchun PostgreSQL tavsiya etiladi.
+- Admin panel UI ichida alohida reklama qilinmaydi, kerak bo'lsa `/admin/` orqali ochiladi.
