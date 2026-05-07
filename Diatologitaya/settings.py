@@ -26,6 +26,10 @@ else:
     default_sqlite_dir = BASE_DIR
 default_sqlite_dir.mkdir(parents=True, exist_ok=True)
 default_sqlite_path = Path(os.environ.get("DJANGO_SQLITE_PATH", str(default_sqlite_dir / "db.sqlite3")))
+default_database_url = f"sqlite:///{default_sqlite_path}"
+database_url = os.environ.get("DATABASE_URL", "").strip()
+if database_url.startswith("://"):
+    database_url = f"postgresql{database_url}"
 
 INSTALLED_APPS = [
     "jazzmin",
@@ -70,8 +74,8 @@ TEMPLATES = [
 WSGI_APPLICATION = "Diatologitaya.wsgi.application"
 
 DATABASES = {
-    "default": dj_database_url.config(
-        default=f"sqlite:///{default_sqlite_path}",
+    "default": dj_database_url.parse(
+        database_url or default_database_url,
         conn_max_age=600,
     )
 }

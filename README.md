@@ -138,9 +138,11 @@ python manage.py import_menu_zip --zip-path path\to\menu.zip --organization "Tas
 - `DATABASE_URL` - Render Postgres `Internal Database URL`
 - `DJANGO_SECRET_KEY` - xavfsiz secret key
 - `DJANGO_DEBUG` - `False`
+- `PYTHON_VERSION` - `3.12`
 - `WEB_CONCURRENCY` - `4`
 
 Render `RENDER_EXTERNAL_HOSTNAME` qiymatini avtomatik beradi. Shu sabab `.onrender.com` domen `ALLOWED_HOSTS` va `CSRF_TRUSTED_ORIGINS` ro'yxatiga avtomatik qo'shiladi.
+`DATABASE_URL` qiymati to'liq bo'lishi kerak, masalan `postgresql://...` bilan boshlanadi.
 
 ## Xato Sahifalari
 
@@ -159,6 +161,7 @@ Production rejimida quyidagi xatolar maxsus sahifa orqali ko'rsatiladi:
 - `DJANGO_CSRF_TRUSTED_ORIGINS`
 - `DATABASE_URL`
 - `DJANGO_SQLITE_PATH`
+- `PYTHON_VERSION`
 
 ## Tekshirish
 
