@@ -6,7 +6,7 @@
 
 - Tashkilot, mavsum, parhez, ovqatlanish vaqti, mahsulot, taom va kunlik menyu modellarini boshqarish
 - Taom va menyu bo'yicha oqsil, yog', uglevod, kaloriya va tannarxni avtomatik hisoblash
-- Global admin panel: `/admin/`
+- Global admin panel: default `/secure-admin/`
 - Tashkilot kabineti: `/organization-admin/`
 - Tashkilot foydalanuvchilari uchun login va profil sahifasi
 - Word formatida xarajat hisobotlarini yuklab olish
@@ -95,7 +95,7 @@ python manage.py runserver
 
 - `http://127.0.0.1:8000/`
 - `http://127.0.0.1:8000/news/`
-- `http://127.0.0.1:8000/admin/`
+- `http://127.0.0.1:8000/secure-admin/`
 - `http://127.0.0.1:8000/organization-admin/`
 
 ## Demo Ma'lumotlar
@@ -138,6 +138,7 @@ python manage.py import_menu_zip --zip-path path\to\menu.zip --organization "Tas
 - `DATABASE_URL` - Render Postgres `Internal Database URL`
 - `DJANGO_SECRET_KEY` - xavfsiz secret key
 - `DJANGO_DEBUG` - `False`
+- `DJANGO_ADMIN_PATH` - admin panel manzili, masalan `secure-admin/`
 - `PYTHON_VERSION` - `3.12`
 - `WEB_CONCURRENCY` - `4`
 
@@ -162,6 +163,7 @@ Production rejimida quyidagi xatolar maxsus sahifa orqali ko'rsatiladi:
 - `DJANGO_CSRF_TRUSTED_ORIGINS`
 - `DATABASE_URL`
 - `DJANGO_SQLITE_PATH`
+- `DJANGO_ADMIN_PATH`
 - `PYTHON_VERSION`
 
 ## Tekshirish
@@ -176,4 +178,4 @@ python manage.py check
 
 - Lokal muhitda SQLite ishlatiladi.
 - Production uchun PostgreSQL tavsiya etiladi.
-- Admin panel UI ichida alohida reklama qilinmaydi, kerak bo'lsa `/admin/` orqali ochiladi.
+- Admin panel UI ichida alohida reklama qilinmaydi, kerak bo'lsa `/secure-admin/` orqali ochiladi. Render'da bu manzilni `DJANGO_ADMIN_PATH` orqali o'zgartirish mumkin.
