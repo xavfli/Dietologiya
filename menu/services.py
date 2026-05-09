@@ -23,7 +23,7 @@ from .models import (
 
 
 OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
-TELEGRAM_SEND_MESSAGE_URL = "https://api.telegram.org/bot{token}/sendMessage"
+TELEGRAM_API_URL = "https://api.telegram.org/bot{token}/{method}"
 
 
 def get_user_organization(user):
@@ -198,22 +198,29 @@ def generate_ai_menu_suggestion(organization: Organization, prompt: str) -> AISu
     return AISuggestion.objects.create(organization=organization, prompt=prompt, response=text)
 
 
-def send_telegram_chat_message(chat_id: str, text: str) -> bool:
+def telegram_api_call(method: str, payload: dict | None = None) -> dict:
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not token:
-        return False
-    body = json.dumps({"chat_id": chat_id, "text": text}).encode("utf-8")
+        return {"ok": False, "description": "TELEGRAM_BOT_TOKEN sozlanmagan."}
+    body = json.dumps(payload or {}).encode("utf-8")
     request = Request(
-        TELEGRAM_SEND_MESSAGE_URL.format(token=token),
+        TELEGRAM_API_URL.format(token=token, method=method),
         data=body,
         headers={"Content-Type": "application/json"},
         method="POST",
     )
     try:
-        with urlopen(request, timeout=20):
-            return True
-    except URLError:
-        return False
+        with urlopen(request, timeout=20) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except HTTPError as error:
+        return {"ok": False, "description": error.read().decode("utf-8", errors="replace")}
+    except URLError as error:
+        return {"ok": False, "description": str(error)}
+
+
+def send_telegram_chat_message(chat_id: str, text: str) -> bool:
+    payload = telegram_api_call("sendMessage", {"chat_id": chat_id, "text": text})
+    return bool(payload.get("ok"))
 
 
 def send_telegram_message(subscription: TelegramSubscription, text: str) -> bool:

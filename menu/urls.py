@@ -12,6 +12,7 @@ from .views import (
     PriceUpdateView,
     ProfileView,
     TelegramWebhookSetupView,
+    TelegramWebhookStatusView,
     TelegramWebhookView,
     TelegramSettingsView,
     health_check,
@@ -33,6 +34,7 @@ urlpatterns = [
     path("profile/telegram/", TelegramSettingsView.as_view(), name="profile_telegram"),
     path("telegram/webhook/", TelegramWebhookView.as_view(), name="telegram_webhook"),
     path("telegram/setup/", TelegramWebhookSetupView.as_view(), name="telegram_setup"),
+    path("telegram/status/", TelegramWebhookStatusView.as_view(), name="telegram_status"),
     path("healthz", health_check, name="health_check"),
     path("logout/", logout_view, name="logout"),
 ]

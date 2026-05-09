@@ -37,6 +37,7 @@ from .services import (
     monthly_cost_total,
     product_requirement_summary,
     send_telegram_chat_message,
+    telegram_api_call,
     top_cost_products,
 )
 
@@ -611,7 +612,30 @@ class TelegramWebhookSetupView(LoginRequiredMixin, TemplateView):
             call_command("set_telegram_webhook", "--url", webhook_url, stdout=output)
         except CommandError as error:
             return HttpResponse(f"Webhook sozlashda xato: {error}", status=400, content_type="text/plain")
-        return HttpResponse(f"Telegram webhook tayyor: {webhook_url}", content_type="text/plain")
+        status = telegram_api_call("getWebhookInfo")
+        return HttpResponse(
+            "Telegram webhook tayyor.\n"
+            f"URL: {webhook_url}\n\n"
+            f"Holat:\n{json.dumps(status, ensure_ascii=False, indent=2)}",
+            content_type="text/plain",
+        )
+
+
+class TelegramWebhookStatusView(LoginRequiredMixin, TemplateView):
+    login_url = reverse_lazy("login")
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            return HttpResponse("Ruxsat yo'q", status=403, content_type="text/plain")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        bot = telegram_api_call("getMe")
+        webhook = telegram_api_call("getWebhookInfo")
+        return HttpResponse(
+            json.dumps({"bot": bot, "webhook": webhook}, ensure_ascii=False, indent=2),
+            content_type="application/json",
+        )
 
 
 class LatestMenuWordExportView(LoginRequiredMixin, TemplateView):
