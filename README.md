@@ -120,6 +120,62 @@ Excel fayllar to'plamini ZIP orqali import qilish:
 python manage.py import_menu_zip --zip-path path\to\menu.zip --organization "Tashkilot nomi" --year 2026
 ```
 
+Papka ichidagi `.xlsx` fayllardan import qilish:
+
+```bash
+python manage.py import_menu_zip --folder-path path\to\folder --organization "Tashkilot nomi" --year 2026
+```
+
+## Internetdan Narx Yangilash
+
+Mahsulot narxlarini internetdagi CSV yoki JSON manbadan avtomatik yangilash:
+
+```bash
+python manage.py update_product_prices --url "https://example.com/prices.csv" --organization "Tashkilot nomi"
+```
+
+CSV ustunlari uchun `mahsulot,narx` yoki `name,price` ishlatiladi:
+
+```csv
+mahsulot,narx
+Guruch,14313
+Kartoshka,5000
+```
+
+JSON ham qo'llab-quvvatlanadi:
+
+```json
+[
+  {"name": "Guruch", "price": 14313},
+  {"name": "Kartoshka", "price": 5000}
+]
+```
+
+Avval bazani o'zgartirmasdan tekshirish uchun:
+
+```bash
+python manage.py update_product_prices --url "https://example.com/prices.csv" --dry-run
+```
+
+Oxirgi narxlarni AI orqali internetdan qidirib yangilash uchun `OPENAI_API_KEY` sozlanadi:
+
+```bash
+set OPENAI_API_KEY=sk-...
+python manage.py update_product_prices --ai-latest --city "Tashkent" --organization "Tashkilot nomi"
+```
+
+AI rejimini avval bazani o'zgartirmasdan tekshirish:
+
+```bash
+python manage.py update_product_prices --ai-latest --city "Tashkent" --dry-run
+```
+
+Modelni almashtirish kerak bo'lsa:
+
+```bash
+python manage.py update_product_prices --ai-latest --model gpt-5 --city "Tashkent"
+```
+
 ## Renderga Deploy Qilish
 
 1. Render dashboardda `New` -> `Postgres` tanlang va database yarating.

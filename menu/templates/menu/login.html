@@ -19,7 +19,27 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label" for="{{ form.password.id_for_label }}">Parol</label>
-                    {{ form.password }}
+                    <div class="password-field" data-password-field>
+                        {{ form.password }}
+                        <button
+                            type="button"
+                            class="password-field__toggle"
+                            data-password-toggle
+                            aria-label="Parolni ochish"
+                            aria-pressed="false"
+                        >
+                            <svg class="password-field__icon password-field__icon--show" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            <svg class="password-field__icon password-field__icon--hide" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M3 3l18 18"></path>
+                                <path d="M10.6 10.6A3 3 0 0 0 13.4 13.4"></path>
+                                <path d="M9.9 5.2A10.1 10.1 0 0 1 12 5c6 0 9.5 7 9.5 7a17.6 17.6 0 0 1-2.8 3.6"></path>
+                                <path d="M6.3 6.9C3.8 8.7 2.5 12 2.5 12s3.5 7 9.5 7a9.9 9.9 0 0 0 4.1-.9"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <button type="submit" class="btn btn-accent w-100">Kirish</button>
             </form>
@@ -28,3 +48,27 @@
 </section>
 {% endblock %}
 
+{% block extra_js %}
+<script>
+document.querySelectorAll("[data-password-field]").forEach((field) => {
+    const input = field.querySelector("input");
+    const originalToggle = field.querySelector("[data-password-toggle]");
+    const toggle = originalToggle ? originalToggle.cloneNode(true) : null;
+    if (originalToggle && toggle) {
+        originalToggle.replaceWith(toggle);
+    }
+    if (!input || !toggle) {
+        return;
+    }
+
+    toggle.addEventListener("click", () => {
+        const shouldShow = input.type === "password";
+        input.type = shouldShow ? "text" : "password";
+        toggle.classList.toggle("is-visible", shouldShow);
+        toggle.setAttribute("aria-label", shouldShow ? "Parolni yopish" : "Parolni ochish");
+        toggle.setAttribute("aria-pressed", shouldShow ? "true" : "false");
+        input.focus();
+    });
+});
+</script>
+{% endblock %}

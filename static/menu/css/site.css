@@ -1328,6 +1328,56 @@ body.is-ready .main-content {
     box-shadow: 0 0 0 0.2rem rgba(60, 184, 21, 0.18);
 }
 
+.password-field {
+    position: relative;
+}
+
+.password-field .form-control {
+    padding-right: 3.25rem;
+}
+
+.password-field__toggle {
+    position: absolute;
+    top: 50%;
+    right: 0.65rem;
+    width: 2.35rem;
+    height: 2.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--primary);
+    padding: 0;
+    transform: translateY(-50%);
+}
+
+.password-field__toggle:hover,
+.password-field__toggle:focus-visible {
+    background: rgba(60, 184, 21, 0.14);
+    outline: none;
+}
+
+.password-field__icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2;
+}
+
+.password-field__icon--hide,
+.password-field__toggle.is-visible .password-field__icon--show {
+    display: none;
+}
+
+.password-field__toggle.is-visible .password-field__icon--hide {
+    display: block;
+}
+
 .fx-tilt {
     transform-style: preserve-3d;
     transform: perspective(1200px) rotateX(var(--fx-rotate-x, 0deg)) rotateY(var(--fx-rotate-y, 0deg));

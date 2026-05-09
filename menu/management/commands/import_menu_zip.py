@@ -30,6 +30,16 @@ MONTHS = {
 }
 
 LIQUID_PRODUCT_HINTS = ("сут", "чой", "сув", "кислота", "вино", "соус", "қаймоқ", "qaymoq")
+PRICE_ROW_HINTS = ("нархи", "нарх", "цена", "цен", "1 килограм")
+PRODUCT_HEADER_HINTS = (
+    "махсулотлар номи",
+    "махсулотлар тури",
+    "махсулотлар турлари",
+    "маҳсулотлар номи",
+    "маҳсулотлар тури",
+    "маҳсулотлар турлари",
+    "product",
+)
 MEAL_SLOT_KEYWORDS = {
     "1-нону": "first_breakfast",
     "2-нону": "second_breakfast",
@@ -60,15 +70,80 @@ def normalize_text(value: str) -> str:
     return value.strip(" .")
 
 
+def is_meaningful_product_name(value: str) -> bool:
+    normalized = normalize_text(value)
+    return bool(normalized and re.search(r"[a-zа-яёқғҳў]", normalized))
+
+
 def build_product_columns(sheet, code_row: int, primary_name_row: int, secondary_name_row: int, start_col: int = 4):
     columns = []
     for col in range(start_col, sheet.max_col + 1):
         code = sheet.get(code_row, col)
         name = sheet.get(secondary_name_row, col) or sheet.get(primary_name_row, col)
-        if not name:
+        if not is_meaningful_product_name(name):
             continue
         columns.append({"col": col, "code": code, "name": name})
     return columns
+
+
+def find_row_with_any(sheet, hints, max_row: int | None = None) -> int | None:
+    max_row = min(max_row or sheet.max_row, sheet.max_row)
+    for row in range(1, max_row + 1):
+        row_text = " ".join(sheet.get(row, col) for col in range(1, min(sheet.max_col, 8) + 1))
+        normalized = normalize_text(row_text)
+        if any(hint in normalized for hint in hints):
+            return row
+    return None
+
+
+def find_product_header_rows(sheet, price_row: int | None = None) -> tuple[int, int, int]:
+    search_until = max(1, (price_row or 12) - 1)
+    product_row = find_row_with_any(sheet, PRODUCT_HEADER_HINTS, search_until) or 3
+    if product_row + 1 <= sheet.max_row:
+        return product_row, product_row + 1, product_row + 2
+    return product_row, product_row, product_row
+
+
+def product_price_map_from_sheet(sheet, header_sheet=None) -> dict[str, Decimal]:
+    price_row = find_row_with_any(sheet, PRICE_ROW_HINTS, 15)
+    if not price_row:
+        return {}
+
+    source_sheet = header_sheet or sheet
+    code_row, primary_name_row, secondary_name_row = find_product_header_rows(
+        source_sheet,
+        price_row if source_sheet is sheet else None,
+    )
+    product_columns = build_product_columns(source_sheet, code_row, primary_name_row, secondary_name_row)
+    prices = {}
+    for column in product_columns:
+        price = parse_decimal(sheet.get(price_row, column["col"]))
+        if price is None or price <= 0:
+            continue
+        prices[normalize_text(column["name"])] = price
+    return prices
+
+
+def collect_workbook_prices(workbook: XlsxWorkbook) -> dict[str, Decimal]:
+    prices = {}
+    sheets = {sheet_name: workbook.read_sheet(sheet_name) for sheet_name in workbook.sheet_targets}
+    preferred_names = ("цены", "нарх", "раскладка", "ум")
+    sheet_names = sorted(
+        workbook.sheet_targets,
+        key=lambda name: 0 if any(token in normalize_text(name) for token in preferred_names) else 1,
+    )
+    for sheet_name in sheet_names:
+        sheet = sheets[sheet_name]
+        sheet_prices = product_price_map_from_sheet(sheet)
+        if not sheet_prices:
+            for header_sheet in sheets.values():
+                if header_sheet is sheet:
+                    continue
+                sheet_prices = product_price_map_from_sheet(sheet, header_sheet)
+                if sheet_prices:
+                    break
+        prices.update(sheet_prices)
+    return prices
 
 
 def infer_unit(name: str) -> str:
@@ -89,34 +164,77 @@ class Command(BaseCommand):
     help = "Import products, dishes, and menu days from the provided zip workbook set."
 
     def add_arguments(self, parser):
-        parser.add_argument("--zip-path", required=True)
+        parser.add_argument("--zip-path")
+        parser.add_argument("--folder-path")
         parser.add_argument("--organization", required=True)
         parser.add_argument("--year", type=int, default=2026)
 
     @transaction.atomic
     def handle(self, *args, **options):
-        zip_path = Path(options["zip_path"])
-        if not zip_path.exists():
-            raise CommandError(f"Zip file not found: {zip_path}")
-
         organization, _ = Organization.objects.get_or_create(name=options["organization"])
         self._ensure_mealtimes()
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            with ZipFile(zip_path) as archive:
-                archive.extractall(temp_dir)
-
-            extracted = list(Path(temp_dir).glob("*.xlsx"))
+            extracted = self._extract_workbooks(options, Path(temp_dir))
             master_path = next((path for path in extracted if "барча" in path.name.lower()), None)
             menu_path = next((path for path in extracted if "лактозсиз" in path.name.lower()), None)
             if not master_path:
-                raise CommandError("Master workbook not found inside zip.")
+                raise CommandError("Master workbook not found. File name should include 'барча'.")
 
-            product_lookup = self._import_master_workbook(master_path, organization)
+            workbook_prices = self._collect_prices_from_files(extracted)
+            product_lookup = self._import_master_workbook(master_path, organization, workbook_prices)
             if menu_path:
                 self._import_menu_workbook(menu_path, organization, product_lookup, options["year"])
+            updated_count = self._update_existing_product_prices(organization, workbook_prices)
 
-        self.stdout.write(self.style.SUCCESS(f"Imported workbook data for {organization.name}"))
+        self.stdout.write(self.style.SUCCESS(
+            f"Imported workbook data for {organization.name}. Prices updated: {updated_count}"
+        ))
+
+    def _extract_workbooks(self, options, temp_dir: Path) -> list[Path]:
+        zip_path = Path(options["zip_path"]) if options.get("zip_path") else None
+        folder_path = Path(options["folder_path"]) if options.get("folder_path") else None
+        if bool(zip_path) == bool(folder_path):
+            raise CommandError("Provide exactly one of --zip-path or --folder-path.")
+        if zip_path:
+            if not zip_path.exists():
+                raise CommandError(f"Zip file not found: {zip_path}")
+            with ZipFile(zip_path) as archive:
+                archive.extractall(temp_dir)
+            root = temp_dir
+        else:
+            if not folder_path.exists():
+                raise CommandError(f"Folder not found: {folder_path}")
+            root = folder_path
+
+        xlsx_files = sorted(path for path in root.glob("*.xlsx") if not path.name.startswith("~$"))
+        xls_files = sorted(path for path in root.glob("*.xls") if not path.name.startswith("~$"))
+        for path in xls_files:
+            self.stdout.write(self.style.WARNING(f"Skipped old .xls workbook, save as .xlsx to import: {path.name}"))
+        if not xlsx_files:
+            raise CommandError("No .xlsx workbooks found.")
+        return xlsx_files
+
+    def _collect_prices_from_files(self, workbook_paths: list[Path]) -> dict[str, Decimal]:
+        prices = {}
+        for workbook_path in workbook_paths:
+            workbook = XlsxWorkbook(workbook_path)
+            file_prices = collect_workbook_prices(workbook)
+            prices.update(file_prices)
+            if file_prices:
+                self.stdout.write(f"Prices found in {workbook_path.name}: {len(file_prices)}")
+        return prices
+
+    def _update_existing_product_prices(self, organization: Organization, prices: dict[str, Decimal]) -> int:
+        updated_count = 0
+        for product in Product.objects.filter(organization=organization):
+            price = prices.get(normalize_text(product.name))
+            if price is None or product.price_per_kg == price:
+                continue
+            product.price_per_kg = price
+            product.save(update_fields=["price_per_kg"])
+            updated_count += 1
+        return updated_count
 
     def _ensure_mealtimes(self):
         items = [
@@ -129,27 +247,35 @@ class Command(BaseCommand):
         for slot, title, order in items:
             MealTime.objects.update_or_create(slot=slot, defaults={"title": title, "order": order})
 
-    def _import_master_workbook(self, workbook_path: Path, organization: Organization):
+    def _import_master_workbook(self, workbook_path: Path, organization: Organization, workbook_prices: dict[str, Decimal]):
         workbook = XlsxWorkbook(workbook_path)
         nutrition_sheet = workbook.read_sheet("раскладка")
         dish_sheet = workbook.read_sheet("все")
 
         product_columns = build_product_columns(nutrition_sheet, 3, 4, 5)
+        protein_row = find_row_with_any(nutrition_sheet, ("оқсил", "оксил", "белок"), 15) or 7
+        fat_row = find_row_with_any(nutrition_sheet, ("ёғ", "ег", "жир"), 15) or 8
+        carbs_row = find_row_with_any(nutrition_sheet, ("углевод",), 15) or 9
+        calories_row = find_row_with_any(nutrition_sheet, ("каллория", "калория", "энергетик", "э.қ"), 15) or 10
         products_by_col = {}
         products_by_name = {}
 
         for column in product_columns:
             name = column["name"]
+            normalized_name = normalize_text(name)
+            price = workbook_prices.get(normalized_name)
+            if price is None:
+                price = product_price_map_from_sheet(nutrition_sheet).get(normalized_name, Decimal("0"))
             product, _ = Product.objects.update_or_create(
                 organization=organization,
                 name=name,
                 defaults={
                     "unit": infer_unit(name),
-                    "protein": parse_decimal(nutrition_sheet.get(6, column["col"])) or Decimal("0"),
-                    "fat": parse_decimal(nutrition_sheet.get(7, column["col"])) or Decimal("0"),
-                    "carbs": parse_decimal(nutrition_sheet.get(8, column["col"])) or Decimal("0"),
-                    "calories": int(parse_decimal(nutrition_sheet.get(9, column["col"])) or 0),
-                    "price_per_kg": parse_decimal(nutrition_sheet.get(10, column["col"])) or Decimal("0"),
+                    "protein": parse_decimal(nutrition_sheet.get(protein_row, column["col"])) or Decimal("0"),
+                    "fat": parse_decimal(nutrition_sheet.get(fat_row, column["col"])) or Decimal("0"),
+                    "carbs": parse_decimal(nutrition_sheet.get(carbs_row, column["col"])) or Decimal("0"),
+                    "calories": int(parse_decimal(nutrition_sheet.get(calories_row, column["col"])) or 0),
+                    "price_per_kg": price or Decimal("0"),
                 },
             )
             products_by_col[column["col"]] = product
