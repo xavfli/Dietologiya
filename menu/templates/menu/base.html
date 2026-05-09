@@ -34,7 +34,7 @@
                 <li class="nav-item"><a class="nav-link" href="{% url 'home' %}">Bosh sahifa</a></li>
                 <li class="nav-item"><a class="nav-link" href="{% url 'organization_list' %}">Tashkilotlar</a></li>
                 <li class="nav-item"><a class="nav-link" href="{% url 'news' %}">Yangiliklar</a></li>
-                {% if request.user.is_authenticated and request.user.managed_organization %}
+                {% if request.user.is_authenticated and request.user.managed_organization or request.user.organization_membership %}
                 <li class="nav-item"><a class="nav-link" href="{% url 'profile' %}">Profil</a></li>
                 <li class="nav-item"><a class="nav-link" href="/organization-admin/">Tashkilot kabineti</a></li>
                 {% endif %}
@@ -54,6 +54,13 @@
 </nav>
 
 <main class="main-content">
+    {% if messages %}
+    <div class="container mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} mb-2" role="alert">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
     {% block content %}{% endblock %}
 </main>
 
@@ -61,9 +68,7 @@
     <div class="container d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-center">
         <div>
             <div class="footer-title">Dietologiya</div>
-            <div class="text-muted small">Responsive Django platformasi, Heroku deploy uchun tayyor.</div>
         </div>
-        <div class="text-muted small">2026 · Django · Bootstrap · SQL · JavaScript</div>
     </div>
 </footer>
 </div>

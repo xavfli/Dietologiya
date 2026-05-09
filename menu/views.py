@@ -1,22 +1,44 @@
-import calendar
 from collections import defaultdict
 from datetime import date
 from decimal import Decimal
+import json
+import os
+import tempfile
+from io import StringIO
+from pathlib import Path
 
+from django.contrib import messages
+from django.contrib.auth import authenticate
 from django.contrib.auth import logout
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView
+from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.db import connection
 from django.db import OperationalError
 from django.db.models import Count, Prefetch
-from django.http import HttpResponseRedirect, HttpResponse
+from django.http import HttpResponseRedirect, HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import ListView, TemplateView
 
 from .docx_export import build_docx
-from .models import MenuDay, MenuEntry, Organization
+from .forms import AISuggestionForm, MenuUploadForm, PriceSourceForm, TelegramSettingsForm
+from .models import AISuggestion, ImportJob, MenuAlert, MenuDay, MenuEntry, Organization, PriceHistory, TelegramSubscription
+from .services import (
+    build_menu_alerts,
+    create_upload_job,
+    generate_ai_menu_suggestion,
+    get_user_organization,
+    monthly_cost_chart,
+    monthly_cost_total,
+    product_requirement_summary,
+    send_telegram_chat_message,
+    top_cost_products,
+)
 
 
 MONTH_LABELS = {
@@ -274,13 +296,13 @@ class ProfileView(LoginRequiredMixin, TemplateView):
     login_url = reverse_lazy("login")
 
     def dispatch(self, request, *args, **kwargs):
-        if not hasattr(request.user, "managed_organization"):
+        if not get_user_organization(request.user):
             return redirect("login")
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        organization = self.request.user.managed_organization
+        organization = get_user_organization(self.request.user)
         menu_days = (
             MenuDay.objects.filter(organization=organization)
             .select_related("season", "diet")
@@ -318,61 +340,287 @@ class ProfileView(LoginRequiredMixin, TemplateView):
             summary_by_date[day.date] = summary
 
         today = timezone.localdate()
-        calendar_year = today.year
-        calendar_month = today.month
-        if summaries and not any(item["day"].date.year == calendar_year and item["day"].date.month == calendar_month for item in summaries):
-            calendar_year = summaries[0]["day"].date.year
-            calendar_month = summaries[0]["day"].date.month
-
-        month_matrix = calendar.Calendar(firstweekday=0).monthdatescalendar(calendar_year, calendar_month)
+        week_start = today.fromordinal(today.toordinal() - today.weekday())
+        week_dates = [week_start.fromordinal(week_start.toordinal() + index) for index in range(7)]
         selected_summary = summary_by_date.get(today)
         if not selected_summary:
             selected_summary = next(
                 (
-                    item
-                    for item in summaries
-                    if item["day"].date.year == calendar_year and item["day"].date.month == calendar_month
+                    summary_by_date[day_date]
+                    for day_date in week_dates
+                    if day_date in summary_by_date
                 ),
-                summaries[0] if summaries else None,
+                None,
             )
 
         calendar_days = []
-        selected_day_id = selected_summary["day_key"] if selected_summary else ""
-        for week in month_matrix:
-            for day_date in week:
-                summary = summary_by_date.get(day_date)
-                calendar_days.append(
-                    {
-                        "date": day_date,
-                        "summary": summary,
-                        "is_current_month": day_date.month == calendar_month,
-                        "is_today": day_date == today,
-                        "is_selected": bool(summary and summary["day_key"] == selected_day_id),
-                    }
-                )
+        selected_day_id = selected_summary["day_key"] if selected_summary else "today-empty"
+        for day_date in week_dates:
+            summary = summary_by_date.get(day_date)
+            calendar_days.append(
+                {
+                    "date": day_date,
+                    "summary": summary,
+                    "is_current_month": True,
+                    "is_today": day_date == today,
+                    "is_selected": bool(day_date == today and (not summary or summary["day_key"] == selected_day_id)),
+                }
+            )
+        week_summaries = [summary_by_date[day_date] for day_date in week_dates if day_date in summary_by_date]
+        week_label = f"{week_dates[0].day}-{week_dates[-1].day} {MONTH_LABELS[week_dates[-1].month]} {week_dates[-1].year}"
 
         context["organization"] = organization
         context["menu_summaries"] = summaries
+        context["week_menu_summaries"] = week_summaries
         context["calendar_weekdays"] = ["Du", "Se", "Cho", "Pa", "Ju", "Sha", "Yak"]
         context["calendar_days"] = calendar_days
-        context["calendar_month_label"] = f"{MONTH_LABELS[calendar_month]} {calendar_year}"
+        context["calendar_month_label"] = week_label
         context["selected_day_id"] = selected_day_id
+        context["today_summary"] = summary_by_date.get(today)
         context["profile_overview"] = {
             "days_count": len(summaries),
             "people_total": total_people,
             "cost_total": total_cost,
             "calories_total": total_calories,
         }
+        context["price_form"] = PriceSourceForm()
+        context["upload_form"] = MenuUploadForm()
+        context["ai_form"] = AISuggestionForm()
+        context["telegram_form"] = TelegramSettingsForm(
+            initial={
+                "chat_id": getattr(getattr(organization, "telegram_subscription", None), "chat_id", ""),
+                "daily_digest": getattr(getattr(organization, "telegram_subscription", None), "daily_digest", True),
+            }
+        )
+        context["monthly_cost_chart"] = monthly_cost_chart(organization)
+        context["monthly_cost_total"] = monthly_cost_total(organization)
+        context["top_products"] = top_cost_products(organization)
+        context["requirements"] = product_requirement_summary(organization)[:12]
+        context["price_history"] = PriceHistory.objects.filter(organization=organization).select_related("product")[:8]
+        context["menu_alerts"] = MenuAlert.objects.filter(organization=organization, is_resolved=False)[:8]
+        context["import_jobs"] = ImportJob.objects.filter(organization=organization)[:6]
+        context["ai_suggestions"] = AISuggestion.objects.filter(organization=organization)[:3]
         return context
+
+
+class OrganizationActionMixin(LoginRequiredMixin):
+    login_url = reverse_lazy("login")
+
+    def dispatch(self, request, *args, **kwargs):
+        organization = get_user_organization(request.user)
+        if not organization:
+            return redirect("login")
+        self.organization = organization
+        return super().dispatch(request, *args, **kwargs)
+
+
+class PriceUpdateView(OrganizationActionMixin, TemplateView):
+    def post(self, request, *args, **kwargs):
+        form = PriceSourceForm(request.POST)
+        if not form.is_valid():
+            messages.error(request, form.errors.as_text())
+            return redirect("profile")
+
+        output = StringIO()
+        try:
+            call_command(
+                "update_product_prices",
+                "--korzinka",
+                "--city",
+                form.cleaned_data.get("city") or "Tashkent",
+                "--organization",
+                self.organization.name,
+                stdout=output,
+            )
+        except CommandError as error:
+            messages.error(request, f"Narx yangilashda xato: {error}")
+        else:
+            output_text = output.getvalue()
+            if "Matched products: 0" in output_text:
+                messages.warning(
+                    request,
+                    "Korzinka katalog sahifasida ochiq narx topilmadi. To'liq Korzinka Go qidiruvi uchun OPENAI_API_KEY sozlang.",
+                )
+            else:
+                messages.success(request, "Narxlar Korzinka manbalari asosida avtomatik yangilandi.")
+        return redirect("profile")
+
+
+class MenuUploadView(OrganizationActionMixin, TemplateView):
+    def post(self, request, *args, **kwargs):
+        form = MenuUploadForm(request.POST, request.FILES)
+        if not form.is_valid():
+            messages.error(request, form.errors.as_text())
+            return redirect("profile")
+
+        uploaded = form.cleaned_data["file"]
+        suffix = Path(uploaded.name).suffix.lower()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir) / uploaded.name
+            with temp_path.open("wb") as destination:
+                for chunk in uploaded.chunks():
+                    destination.write(chunk)
+            try:
+                if suffix == ".zip":
+                    call_command("import_menu_zip", "--zip-path", str(temp_path), "--organization", self.organization.name)
+                elif suffix == ".xlsx":
+                    call_command("import_menu_zip", "--folder-path", temp_dir, "--organization", self.organization.name)
+                else:
+                    raise CommandError("Faqat .zip yoki .xlsx fayl yuklang.")
+            except CommandError as error:
+                ImportJob.objects.create(
+                    organization=self.organization,
+                    job_type=ImportJob.JobType.EXCEL,
+                    status=ImportJob.Status.FAILED,
+                    source=uploaded.name,
+                    summary=str(error),
+                )
+                messages.error(request, f"Import xatosi: {error}")
+            else:
+                create_upload_job(self.organization, uploaded, "Fayl kabinet orqali import qilindi.")
+                messages.success(request, "Excel/ZIP import yakunlandi.")
+        return redirect("profile")
+
+
+class AlertBuildView(OrganizationActionMixin, TemplateView):
+    def post(self, request, *args, **kwargs):
+        count = build_menu_alerts(self.organization)
+        messages.success(request, f"{count} ta ogohlantirish yaratildi.")
+        return redirect("profile")
+
+
+class AISuggestionView(OrganizationActionMixin, TemplateView):
+    def post(self, request, *args, **kwargs):
+        form = AISuggestionForm(request.POST)
+        if not form.is_valid():
+            messages.error(request, form.errors.as_text())
+            return redirect("profile")
+        suggestion = generate_ai_menu_suggestion(self.organization, form.cleaned_data["prompt"])
+        if suggestion:
+            messages.success(request, "AI menyu tavsiyasi tayyorlandi.")
+        else:
+            messages.error(request, "OPENAI_API_KEY sozlanmagan. Render Environment variables bo'limiga API kalit qo'shib redeploy qiling.")
+        return redirect("profile")
+
+
+class TelegramSettingsView(OrganizationActionMixin, TemplateView):
+    def post(self, request, *args, **kwargs):
+        form = TelegramSettingsForm(request.POST)
+        if not form.is_valid():
+            messages.error(request, form.errors.as_text())
+            return redirect("profile")
+        TelegramSubscription.objects.update_or_create(
+            organization=self.organization,
+            defaults={
+                "chat_id": form.cleaned_data["chat_id"],
+                "daily_digest": form.cleaned_data["daily_digest"],
+                "is_active": True,
+            },
+        )
+        messages.success(request, "Telegram sozlamasi saqlandi.")
+        return redirect("profile")
+
+
+def _telegram_menu_text(organization):
+    menu_day = MenuDay.objects.filter(organization=organization).order_by("-date").first()
+    if not menu_day:
+        return f"{organization.name}: menyu ma'lumotlari hali yo'q."
+
+    lines = [
+        organization.name,
+        f"Sana: {menu_day.date:%d.%m.%Y}",
+        f"Taomlanuvchilar: {menu_day.people_count}",
+        f"Umumiy xarajat: {menu_day.total_cost:.0f} so'm",
+        f"Kishi boshiga: {menu_day.per_person_cost:.0f} so'm",
+        "",
+        "Retseptlar:",
+    ]
+    for entry in menu_day.entries.select_related("mealtime", "dish").all():
+        lines.append(f"- {entry.mealtime.title}: {entry.dish.name} ({entry.portions} porsiya)")
+    return "\n".join(lines)
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class TelegramWebhookView(TemplateView):
+    def post(self, request, *args, **kwargs):
+        try:
+            payload = json.loads(request.body.decode("utf-8"))
+        except json.JSONDecodeError:
+            return JsonResponse({"ok": False}, status=400)
+
+        message = payload.get("message") or payload.get("edited_message") or {}
+        chat = message.get("chat") or {}
+        chat_id = str(chat.get("id") or "")
+        text = (message.get("text") or "").strip()
+        if not chat_id:
+            return JsonResponse({"ok": True})
+
+        if text.startswith(("/start", "/help")):
+            send_telegram_chat_message(
+                chat_id,
+                "Dietologiya botiga xush kelibsiz.\n"
+                "Sayt login/paroli bilan ulanish: /login login parol\n"
+                "Oxirgi menyu va xarajat: /today\n"
+                "Qisqa xulosa: /summary",
+            )
+            return JsonResponse({"ok": True})
+
+        if text.startswith("/login"):
+            parts = text.split(maxsplit=2)
+            if len(parts) < 3:
+                send_telegram_chat_message(chat_id, "Format: /login login parol")
+                return JsonResponse({"ok": True})
+            user = authenticate(username=parts[1], password=parts[2])
+            organization = get_user_organization(user) if user else None
+            if not organization:
+                send_telegram_chat_message(chat_id, "Login yoki parol noto'g'ri, yoki foydalanuvchi tashkilotga bog'lanmagan.")
+                return JsonResponse({"ok": True})
+            TelegramSubscription.objects.update_or_create(
+                organization=organization,
+                defaults={"chat_id": chat_id, "is_active": True, "daily_digest": True},
+            )
+            send_telegram_chat_message(chat_id, f"Ulandi: {organization.name}\nEndi /today yoki /summary yuboring.")
+            return JsonResponse({"ok": True})
+
+        subscription = TelegramSubscription.objects.filter(chat_id=chat_id, is_active=True).select_related("organization").first()
+        if not subscription:
+            send_telegram_chat_message(chat_id, "Avval sayt login/paroli bilan ulaning: /login login parol")
+            return JsonResponse({"ok": True})
+
+        if text.startswith(("/today", "/summary")):
+            send_telegram_chat_message(chat_id, _telegram_menu_text(subscription.organization))
+        else:
+            send_telegram_chat_message(chat_id, "Buyruqlar: /today, /summary")
+        return JsonResponse({"ok": True})
+
+
+class TelegramWebhookSetupView(LoginRequiredMixin, TemplateView):
+    login_url = reverse_lazy("login")
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            return HttpResponse("Ruxsat yo'q", status=403, content_type="text/plain")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        if not os.environ.get("TELEGRAM_BOT_TOKEN"):
+            return HttpResponse("TELEGRAM_BOT_TOKEN sozlanmagan.", status=400, content_type="text/plain")
+        webhook_url = request.build_absolute_uri(reverse("telegram_webhook"))
+        output = StringIO()
+        try:
+            call_command("set_telegram_webhook", "--url", webhook_url, stdout=output)
+        except CommandError as error:
+            return HttpResponse(f"Webhook sozlashda xato: {error}", status=400, content_type="text/plain")
+        return HttpResponse(f"Telegram webhook tayyor: {webhook_url}", content_type="text/plain")
 
 
 class LatestMenuWordExportView(LoginRequiredMixin, TemplateView):
     login_url = reverse_lazy("login")
 
     def dispatch(self, request, *args, **kwargs):
-        if not hasattr(request.user, "managed_organization"):
+        organization = get_user_organization(request.user)
+        if not organization:
             return redirect("login")
-        organization = request.user.managed_organization
         menu_day = (
             MenuDay.objects.filter(organization=organization)
             .prefetch_related("entries__dish__ingredients__product")
@@ -425,9 +673,9 @@ class AllMenuWordExportView(LoginRequiredMixin, TemplateView):
     login_url = reverse_lazy("login")
 
     def dispatch(self, request, *args, **kwargs):
-        if not hasattr(request.user, "managed_organization"):
+        organization = get_user_organization(request.user)
+        if not organization:
             return redirect("login")
-        organization = request.user.managed_organization
         menu_days = list(
             MenuDay.objects.filter(organization=organization)
             .prefetch_related("entries__dish__ingredients__product")

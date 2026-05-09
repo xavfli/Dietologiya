@@ -24,6 +24,29 @@ class Organization(models.Model):
         return self.name
 
 
+class OrganizationMember(models.Model):
+    class Role(models.TextChoices):
+        DIRECTOR = "director", _("Direktor")
+        COOK = "cook", _("Oshpaz")
+        ACCOUNTANT = "accountant", _("Hisobchi")
+        VIEWER = "viewer", _("Kuzatuvchi")
+
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="members")
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="organization_membership")
+    role = models.CharField(max_length=32, choices=Role.choices, default=Role.VIEWER)
+    can_manage_menu = models.BooleanField(default=False)
+    can_manage_prices = models.BooleanField(default=False)
+    can_view_reports = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ("organization__name", "user__username")
+        verbose_name = "Tashkilot a'zosi"
+        verbose_name_plural = "Tashkilot a'zolari"
+
+    def __str__(self):
+        return f"{self.user} - {self.organization} ({self.get_role_display()})"
+
+
 class Season(models.Model):
     class SeasonName(models.TextChoices):
         WINTER = "winter", _("Qish")
@@ -104,6 +127,61 @@ class Product(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class PriceHistory(models.Model):
+    class SourceType(models.TextChoices):
+        MANUAL = "manual", _("Qo'lda")
+        EXCEL = "excel", _("Excel")
+        URL = "url", _("Internet jadval")
+        AI = "ai", _("AI internet qidiruv")
+
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="price_history")
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="price_history")
+    old_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    new_price = models.DecimalField(max_digits=10, decimal_places=2)
+    source_type = models.CharField(max_length=16, choices=SourceType.choices, default=SourceType.MANUAL)
+    source_label = models.CharField(max_length=300, blank=True)
+    confidence = models.PositiveSmallIntegerField(default=100)
+    effective_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at", "product__name")
+        verbose_name = "Narx tarixi"
+        verbose_name_plural = "Narx tarixi"
+
+    def __str__(self):
+        return f"{self.product.name}: {self.old_price} -> {self.new_price}"
+
+
+class ImportJob(models.Model):
+    class JobType(models.TextChoices):
+        EXCEL = "excel", _("Excel import")
+        PRICE_URL = "price_url", _("Internet narx")
+        PRICE_AI = "price_ai", _("AI narx")
+        MENU_AI = "menu_ai", _("AI menyu")
+
+    class Status(models.TextChoices):
+        PENDING = "pending", _("Kutilmoqda")
+        SUCCESS = "success", _("Bajarildi")
+        FAILED = "failed", _("Xatolik")
+
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="import_jobs")
+    job_type = models.CharField(max_length=24, choices=JobType.choices)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
+    source = models.CharField(max_length=500, blank=True)
+    summary = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        verbose_name = "Import vazifasi"
+        verbose_name_plural = "Import vazifalari"
+
+    def __str__(self):
+        return f"{self.organization} - {self.get_job_type_display()} - {self.get_status_display()}"
 
 
 class Dish(models.Model):
@@ -260,3 +338,56 @@ class MenuEntry(models.Model):
     @property
     def total_carbs(self):
         return self.dish.total_carbs * self.portions
+
+
+class MenuAlert(models.Model):
+    class Severity(models.TextChoices):
+        INFO = "info", _("Ma'lumot")
+        WARNING = "warning", _("Ogohlantirish")
+        DANGER = "danger", _("Xavf")
+
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="menu_alerts")
+    menu_day = models.ForeignKey(MenuDay, on_delete=models.CASCADE, related_name="alerts", null=True, blank=True)
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    severity = models.CharField(max_length=16, choices=Severity.choices, default=Severity.WARNING)
+    is_resolved = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("is_resolved", "-created_at")
+        verbose_name = "Menyu ogohlantirishi"
+        verbose_name_plural = "Menyu ogohlantirishlari"
+
+    def __str__(self):
+        return self.title
+
+
+class AISuggestion(models.Model):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="ai_suggestions")
+    prompt = models.TextField()
+    response = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        verbose_name = "AI menyu tavsiyasi"
+        verbose_name_plural = "AI menyu tavsiyalari"
+
+    def __str__(self):
+        return f"AI tavsiya - {self.organization} - {self.created_at:%Y-%m-%d}"
+
+
+class TelegramSubscription(models.Model):
+    organization = models.OneToOneField(Organization, on_delete=models.CASCADE, related_name="telegram_subscription")
+    chat_id = models.CharField(max_length=120)
+    is_active = models.BooleanField(default=True)
+    daily_digest = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Telegram sozlama"
+        verbose_name_plural = "Telegram sozlamalari"
+
+    def __str__(self):
+        return f"{self.organization} - {self.chat_id}"

@@ -11,6 +11,8 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from menu.models import Dish, DishIngredient, MealTime, MenuDay, MenuEntry, Organization, Product, Season
+from menu.models import PriceHistory
+from menu.services import record_product_price
 from menu.xlsx_utils import XlsxWorkbook
 
 
@@ -275,9 +277,10 @@ class Command(BaseCommand):
                     "fat": parse_decimal(nutrition_sheet.get(fat_row, column["col"])) or Decimal("0"),
                     "carbs": parse_decimal(nutrition_sheet.get(carbs_row, column["col"])) or Decimal("0"),
                     "calories": int(parse_decimal(nutrition_sheet.get(calories_row, column["col"])) or 0),
-                    "price_per_kg": price or Decimal("0"),
                 },
             )
+            if price:
+                record_product_price(product, price, PriceHistory.SourceType.EXCEL, workbook_path.name)
             products_by_col[column["col"]] = product
             products_by_name[normalize_text(product.name)] = product
 

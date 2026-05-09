@@ -176,6 +176,55 @@ Modelni almashtirish kerak bo'lsa:
 python manage.py update_product_prices --ai-latest --model gpt-5 --city "Tashkent"
 ```
 
+Narxlarni Korzinka rasmiy manbalaridan qidirish:
+
+```bash
+set OPENAI_API_KEY=sk-...
+python manage.py update_product_prices --korzinka --city "Tashkent" --organization "Tashkilot nomi"
+```
+
+`--korzinka` rejimi Korzinka rasmiy katalogi va Korzinka Go manbalariga tayanadi. Rasmiy manbadan ishonchli narx topilmagan mahsulotlar o'tkazib yuboriladi.
+
+## Kabinet Qo'shimchalari
+
+Profil sahifasida quyidagi boshqaruvlar mavjud:
+
+- Narxlarni CSV/JSON URL yoki AI orqali yangilash
+- Narxlarni Korzinka rasmiy manbalaridan olish
+- Excel/ZIP faylni kabinetdan yuklab import qilish
+- Menyu ogohlantirishlarini tekshirish
+- Oylik xarajat grafigi va eng ko'p xarajat qilayotgan mahsulotlar
+- Mahsulot ehtiyoji ro'yxati
+- Narxlar tarixi
+- AI menyu tavsiyasi
+- Telegram chat ID saqlash
+
+Telegram xulosasini yuborish:
+
+```bash
+set TELEGRAM_BOT_TOKEN=123456:bot-token
+python manage.py send_telegram_digest --organization "Tashkilot nomi"
+```
+
+Telegram botni webhook bilan ulash:
+
+```bash
+set TELEGRAM_BOT_TOKEN=123456:bot-token
+python manage.py set_telegram_webhook --url "https://your-site.onrender.com/telegram/webhook/"
+```
+
+Yoki deploydan keyin superuser bilan saytga kirib `/telegram/setup/` sahifasini oching. Bu sahifa `TELEGRAM_BOT_TOKEN` env qiymati orqali webhookni avtomatik ulaydi.
+
+Foydalanuvchi botda sayt login/paroli bilan ulanadi:
+
+```text
+/login login parol
+/today
+/summary
+```
+
+Rollar uchun `Tashkilot a'zolari` modelidan foydalanuvchini tashkilotga bog'lang. Direktor, oshpaz, hisobchi va kuzatuvchi rollari mavjud.
+
 ## Renderga Deploy Qilish
 
 1. Render dashboardda `New` -> `Postgres` tanlang va database yarating.
@@ -198,6 +247,10 @@ python manage.py update_product_prices --ai-latest --model gpt-5 --city "Tashken
 - `DJANGO_SUPERUSER_USERNAME` - admin login
 - `DJANGO_SUPERUSER_PASSWORD` - admin parol
 - `DJANGO_SUPERUSER_EMAIL` - admin email, ixtiyoriy
+- `OPENAI_API_KEY` - AI menyu tavsiyasi va Korzinka Go qidiruvi uchun OpenAI API kaliti
+- `OPENAI_MENU_MODEL` - AI menyu modeli, ixtiyoriy, default `gpt-5`
+- `OPENAI_PRICE_MODEL` - AI narx qidirish modeli, ixtiyoriy, default `gpt-5`
+- `TELEGRAM_BOT_TOKEN` - Telegram xulosalari uchun bot token, ixtiyoriy
 - `PYTHON_VERSION` - `3.12`
 - `WEB_CONCURRENCY` - `4`
 
@@ -206,6 +259,8 @@ Render `RENDER_EXTERNAL_HOSTNAME` qiymatini avtomatik beradi. Shu sabab `.onrend
 `DATABASE_URL` noto'g'ri kiritilsa, loyiha build paytida yiqilmaslik uchun SQLite fallback ishlatadi, lekin production uchun Render Postgres `Internal Database URL` qiymatini to'g'ri qo'yish shart.
 `<Postgres Internal Database URL>` yoki `<Generate qilingan secret>` kabi placeholder matnlarni qoldirmang; ularning o'rniga haqiqiy qiymat yozing.
 Static fayllar Render build paytida WhiteNoise orqali compressed holatda yig'iladi. Vendor JavaScript ichidagi yo'q `.map` havolalar buildni yiqitmasligi uchun manifest talab qilmaydigan compressed storage ishlatiladi.
+
+AI tavsiyalar Renderda ishlashi uchun `OPENAI_API_KEY` Render dashboarddagi Environment variables bo'limiga qo'shilishi va servis redeploy qilinishi kerak. API keyni kodga yoki GitHubga yozmang.
 
 ### Renderda Admin Yaratish
 
@@ -234,6 +289,7 @@ Production rejimida quyidagi xatolar maxsus sahifa orqali ko'rsatiladi:
 - `DJANGO_ALLOWED_HOSTS`
 - `DJANGO_CSRF_TRUSTED_ORIGINS`
 - `DATABASE_URL`
+- `OPENAI_API_KEY`
 - `DJANGO_SQLITE_PATH`
 - `DJANGO_ADMIN_PATH`
 - `DJANGO_SUPERUSER_USERNAME`

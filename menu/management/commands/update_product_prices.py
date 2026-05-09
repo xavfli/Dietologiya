@@ -4,6 +4,7 @@ import csv
 import json
 import os
 import re
+from html import unescape
 from decimal import Decimal, InvalidOperation
 from io import StringIO
 from urllib.error import HTTPError, URLError
@@ -12,13 +13,15 @@ from urllib.request import Request, urlopen
 from django.core.management.base import BaseCommand, CommandError
 
 from menu.management.commands.import_menu_zip import normalize_text
-from menu.models import Organization, Product
+from menu.models import ImportJob, Organization, PriceHistory, Product
+from menu.services import record_product_price
 
 
 NAME_KEYS = ("name", "product", "mahsulot", "махсулот", "mahsulot_nomi", "product_name")
 PRICE_KEYS = ("price", "narx", "цена", "narxi", "price_per_kg", "kg_price")
 USER_AGENT = "Dietologiya-price-updater/1.0"
 OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
+KORZINKA_CATALOG_URL = "https://www.korzinka.uz/catalog"
 
 
 def parse_price(value) -> Decimal | None:
@@ -113,12 +116,47 @@ def product_names(products) -> list[str]:
     return names
 
 
+def html_text(value: str) -> str:
+    value = re.sub(r"<script\b.*?</script>", " ", value, flags=re.DOTALL | re.IGNORECASE)
+    value = re.sub(r"<style\b.*?</style>", " ", value, flags=re.DOTALL | re.IGNORECASE)
+    value = re.sub(r"<[^>]+>", " ", value)
+    return re.sub(r"\s+", " ", unescape(value))
+
+
+def price_map_from_korzinka_html(payload: str, products: list[Product]) -> dict[str, Decimal]:
+    text = html_text(payload)
+    prices = {}
+    for product in products:
+        product_name = normalize_text(product.name)
+        if not product_name:
+            continue
+        aliases = {product_name}
+        aliases.update(part.strip() for part in re.split(r"[,()/]", product_name) if len(part.strip()) >= 3)
+        best_price = None
+        for alias in aliases:
+            match = re.search(
+                rf"(.{{0,80}}{re.escape(alias)}.{{0,160}})",
+                normalize_text(text),
+                flags=re.IGNORECASE,
+            )
+            if not match:
+                continue
+            price_match = re.search(r"(\d[\d\s]{2,})(?:\s*)(?:so'?m|сум|сўм|uzs)?", match.group(1), flags=re.IGNORECASE)
+            if price_match:
+                best_price = parse_price(price_match.group(1))
+                break
+        if best_price:
+            prices[product_name] = best_price
+    return prices
+
+
 class Command(BaseCommand):
     help = "Update product prices from an internet CSV/JSON source or OpenAI web-search AI."
 
     def add_arguments(self, parser):
         parser.add_argument("--url", help="Internet CSV/JSON URL with product names and prices.")
         parser.add_argument("--ai-latest", action="store_true", help="Use OpenAI web search to find latest prices.")
+        parser.add_argument("--korzinka", action="store_true", help="Use Korzinka official sources for latest prices.")
         parser.add_argument("--city", default="Tashkent", help="City for AI price search.")
         parser.add_argument("--country", default="UZ", help="Two-letter country code for AI price search.")
         parser.add_argument("--model", default=os.environ.get("OPENAI_PRICE_MODEL", "gpt-5"))
@@ -135,15 +173,32 @@ class Command(BaseCommand):
             products = products.filter(organization=organization)
         products = list(products)
 
-        if bool(options.get("url")) == bool(options.get("ai_latest")):
-            raise CommandError("Provide exactly one of --url or --ai-latest.")
+        selected_sources = [bool(options.get("url")), bool(options.get("ai_latest")), bool(options.get("korzinka"))]
+        if sum(selected_sources) != 1:
+            raise CommandError("Provide exactly one of --url, --ai-latest, or --korzinka.")
 
         if options.get("url"):
             source_url = options["url"]
             payload = self._fetch(source_url, options["timeout"])
             prices = price_map_from_payload(payload, source_url)
+        elif options.get("korzinka") and not os.environ.get("OPENAI_API_KEY"):
+            payload = self._fetch(KORZINKA_CATALOG_URL, options["timeout"])
+            prices = price_map_from_korzinka_html(payload, products)
+            if not prices:
+                self.stdout.write(self.style.WARNING(
+                    "Korzinka katalog sahifasida ochiq mahsulot narxlari topilmadi. "
+                    "To'liq Korzinka Go qidiruvi uchun OPENAI_API_KEY sozlang."
+                ))
         else:
-            prices = self._fetch_ai_latest_prices(products, options)
+            prices = self._fetch_ai_latest_prices(products, options, korzinka_only=options.get("korzinka"))
+
+        job = None
+        if options.get("organization") and products and not options["dry_run"]:
+            job = ImportJob.objects.create(
+                organization=products[0].organization if products[0].organization else None,
+                job_type=ImportJob.JobType.PRICE_URL if options.get("url") or options.get("korzinka") else ImportJob.JobType.PRICE_AI,
+                source=options.get("url") or ("Korzinka official sources" if options.get("korzinka") else "OpenAI web-search AI"),
+            )
 
         updated = 0
         matched = 0
@@ -156,11 +211,19 @@ class Command(BaseCommand):
                 continue
             self.stdout.write(f"{product.name}: {product.price_per_kg} -> {price}")
             if not options["dry_run"]:
-                product.price_per_kg = price
-                product.save(update_fields=["price_per_kg"])
+                source_type = PriceHistory.SourceType.URL if options.get("url") else PriceHistory.SourceType.AI
+                source_label = options.get("url") or ("Korzinka official sources" if options.get("korzinka") else "OpenAI web-search AI")
+                record_product_price(product, price, source_type, source_label)
             updated += 1
 
         mode = "Dry run" if options["dry_run"] else "Updated"
+        if job:
+            job.status = ImportJob.Status.SUCCESS
+            job.summary = f"{mode}: {updated}. Matched products: {matched}. Source prices: {len(prices)}"
+            from django.utils import timezone
+
+            job.completed_at = timezone.now()
+            job.save(update_fields=["status", "summary", "completed_at"])
         self.stdout.write(self.style.SUCCESS(
             f"{mode}: {updated}. Matched products: {matched}. Source prices: {len(prices)}"
         ))
@@ -176,7 +239,7 @@ class Command(BaseCommand):
         except URLError as error:
             raise CommandError(f"Could not fetch price source: {error}") from error
 
-    def _fetch_ai_latest_prices(self, products: list[Product], options) -> dict[str, Decimal]:
+    def _fetch_ai_latest_prices(self, products: list[Product], options, korzinka_only: bool = False) -> dict[str, Decimal]:
         api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
             raise CommandError("OPENAI_API_KEY is required for --ai-latest.")
@@ -185,9 +248,17 @@ class Command(BaseCommand):
         if not names:
             raise CommandError("No products found to update.")
 
+        source_instruction = (
+            "Use only official Korzinka sources, especially korzinka.uz catalog pages and Korzinka Go references. "
+            "Do not use other supermarkets, marketplaces, blogs, or generic market-price pages. "
+            f"Official catalog URL: {KORZINKA_CATALOG_URL}. "
+        ) if korzinka_only else (
+            "Use reliable current market or retail sources for Uzbekistan. "
+        )
         prompt = (
             "Find the latest available food product prices for Uzbekistan. "
-            f"Prefer current market or retail prices in {options['city']}. "
+            f"Prefer prices available in {options['city']}. "
+            f"{source_instruction}"
             "Return only valid JSON, no markdown. Format: "
             "[{\"name\":\"same product name from input\",\"price\":12345,\"unit\":\"kg\","
             "\"source\":\"URL or source title\",\"date\":\"YYYY-MM-DD if known\"}]. "
