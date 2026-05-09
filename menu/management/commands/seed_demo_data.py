@@ -41,6 +41,7 @@ class Command(BaseCommand):
         user.set_password(password)
         user.save()
         owner_user = user_model.objects.filter(username=superuser_username).first() or user
+        Organization.objects.filter(owner=owner_user).exclude(name="Sog'lom Avlod MTT").update(owner=None)
 
         organization, _ = Organization.objects.get_or_create(
             name="Sog'lom Avlod MTT",
