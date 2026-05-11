@@ -1,7 +1,6 @@
 from django.urls import path
 from .views import (
     AllMenuWordExportView,
-    AISuggestionView,
     AlertBuildView,
     HomeView,
     LatestMenuWordExportView,
@@ -30,7 +29,6 @@ urlpatterns = [
     path("profile/update-prices/", PriceUpdateView.as_view(), name="profile_update_prices"),
     path("profile/import-menu/", MenuUploadView.as_view(), name="profile_import_menu"),
     path("profile/build-alerts/", AlertBuildView.as_view(), name="profile_build_alerts"),
-    path("profile/ai-suggestion/", AISuggestionView.as_view(), name="profile_ai_suggestion"),
     path("profile/telegram/", TelegramSettingsView.as_view(), name="profile_telegram"),
     path("telegram/webhook/", TelegramWebhookView.as_view(), name="telegram_webhook"),
     path("telegram/setup/", TelegramWebhookSetupView.as_view(), name="telegram_setup"),

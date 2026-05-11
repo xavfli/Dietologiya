@@ -27,12 +27,11 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import ListView, TemplateView
 
 from .docx_export import build_docx
-from .forms import AISuggestionForm, MenuUploadForm, PriceSourceForm, TelegramSettingsForm
-from .models import AISuggestion, ImportJob, MenuAlert, MenuDay, MenuEntry, Organization, PriceHistory, TelegramSubscription
+from .forms import MenuUploadForm, PriceSourceForm, TelegramSettingsForm
+from .models import ImportJob, MenuAlert, MenuDay, MenuEntry, Organization, PriceHistory, TelegramSubscription
 from .services import (
     build_menu_alerts,
     create_upload_job,
-    generate_ai_menu_suggestion,
     get_user_organization,
     monthly_cost_chart,
     monthly_cost_total,
@@ -387,7 +386,6 @@ class ProfileView(LoginRequiredMixin, TemplateView):
         }
         context["price_form"] = PriceSourceForm()
         context["upload_form"] = MenuUploadForm()
-        context["ai_form"] = AISuggestionForm()
         context["telegram_form"] = TelegramSettingsForm(
             initial={
                 "chat_id": getattr(getattr(organization, "telegram_subscription", None), "chat_id", ""),
@@ -401,7 +399,6 @@ class ProfileView(LoginRequiredMixin, TemplateView):
         context["price_history"] = PriceHistory.objects.filter(organization=organization).select_related("product")[:8]
         context["menu_alerts"] = MenuAlert.objects.filter(organization=organization, is_resolved=False)[:8]
         context["import_jobs"] = ImportJob.objects.filter(organization=organization)[:6]
-        context["ai_suggestions"] = AISuggestion.objects.filter(organization=organization)[:3]
         return context
 
 
@@ -488,20 +485,6 @@ class AlertBuildView(OrganizationActionMixin, TemplateView):
     def post(self, request, *args, **kwargs):
         count = build_menu_alerts(self.organization)
         messages.success(request, f"{count} ta ogohlantirish yaratildi.")
-        return redirect("profile")
-
-
-class AISuggestionView(OrganizationActionMixin, TemplateView):
-    def post(self, request, *args, **kwargs):
-        form = AISuggestionForm(request.POST)
-        if not form.is_valid():
-            messages.error(request, form.errors.as_text())
-            return redirect("profile")
-        suggestion = generate_ai_menu_suggestion(self.organization, form.cleaned_data["prompt"])
-        if suggestion:
-            messages.success(request, "AI menyu tavsiyasi tayyorlandi.")
-        else:
-            messages.error(request, "OPENAI_API_KEY sozlanmagan. Render Environment variables bo'limiga API kalit qo'shib redeploy qiling.")
         return redirect("profile")
 
 

@@ -10,8 +10,6 @@ from django.core.files.uploadedfile import UploadedFile
 from django.utils import timezone
 
 from .models import (
-    AISuggestion,
-    Dish,
     ImportJob,
     MenuAlert,
     MenuDay,
@@ -22,7 +20,6 @@ from .models import (
 )
 
 
-OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
 TELEGRAM_API_URL = "https://api.telegram.org/bot{token}/{method}"
 
 
@@ -156,58 +153,6 @@ def monthly_cost_total(organization: Organization) -> Decimal:
 
 def top_cost_products(organization: Organization, limit: int = 8) -> list[dict]:
     return product_requirement_summary(organization)[:limit]
-
-
-def generate_ai_menu_suggestion(organization: Organization, prompt: str) -> AISuggestion:
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        return None
-
-    dishes = list(Dish.objects.filter(organization=organization).values_list("name", flat=True)[:80])
-    products = list(Product.objects.filter(organization=organization).values_list("name", flat=True)[:120])
-    body = {
-        "model": os.environ.get("OPENAI_MENU_MODEL", "gpt-5.4-mini"),
-        "input": (
-            "Tashkilot uchun amaliy menyu tavsiyasi tuz. Mavjud taom va mahsulotlarga tayan. "
-            "Javobni o'zbek tilida qisqa jadval va ogohlantirishlar bilan ber.\n"
-            f"So'rov: {prompt}\n"
-            f"Taomlar: {json.dumps(dishes, ensure_ascii=False)}\n"
-            f"Mahsulotlar: {json.dumps(products, ensure_ascii=False)}"
-        ),
-    }
-    request = Request(
-        OPENAI_RESPONSES_URL,
-        data=json.dumps(body).encode("utf-8"),
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        method="POST",
-    )
-    try:
-        with urlopen(request, timeout=45) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-    except HTTPError as error:
-        detail = error.read().decode("utf-8", errors="replace")
-        if error.code == 429:
-            message = (
-                "AI xatosi: OpenAI hisobida kredit yoki limit yetmadi. "
-                "Platformadagi Billing bo'limida kredit qo'shing yoki birozdan keyin qayta urinib ko'ring."
-            )
-        elif error.code == 401:
-            message = "AI xatosi: OPENAI_API_KEY noto'g'ri yoki bekor qilingan. Render Environment variables bo'limida yangi kalit qo'ying."
-        else:
-            message = f"AI xatosi: HTTP {error.code}. {detail[:300]}"
-        return AISuggestion.objects.create(organization=organization, prompt=prompt, response=message)
-    except URLError as error:
-        return AISuggestion.objects.create(organization=organization, prompt=prompt, response=f"AI xatosi: internet ulanishi ishlamadi: {error}")
-
-    text = payload.get("output_text") or ""
-    if not text:
-        parts = []
-        for item in payload.get("output", []):
-            for content in item.get("content", []):
-                if content.get("text"):
-                    parts.append(content["text"])
-        text = "\n".join(parts) or "AI javobi bo'sh qaytdi."
-    return AISuggestion.objects.create(organization=organization, prompt=prompt, response=text)
 
 
 def telegram_api_call(method: str, payload: dict | None = None) -> dict:

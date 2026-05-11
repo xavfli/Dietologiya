@@ -1,7 +1,6 @@
 from django.contrib import admin
 
 from .models import (
-    AISuggestion,
     Diet,
     Dish,
     DishIngredient,
@@ -105,12 +104,6 @@ class MenuAlertAdmin(admin.ModelAdmin):
     list_display = ("title", "organization", "menu_day", "severity", "is_resolved", "created_at")
     list_filter = ("severity", "is_resolved", "organization")
     search_fields = ("title", "message", "organization__name")
-
-
-@admin.register(AISuggestion)
-class AISuggestionAdmin(admin.ModelAdmin):
-    list_display = ("organization", "created_at")
-    search_fields = ("organization__name", "prompt", "response")
 
 
 @admin.register(TelegramSubscription)

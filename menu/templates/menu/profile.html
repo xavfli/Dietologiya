@@ -5,7 +5,6 @@
 <svg class="visually-hidden" aria-hidden="true">
     <symbol id="icon-price" viewBox="0 0 24 24"><path d="M12 3v18"></path><path d="M17 7.5c-.8-1.1-2.3-1.8-4.2-1.8-2.3 0-4 1-4 2.7 0 4.2 8.5 1.8 8.5 6.2 0 1.8-1.8 3-4.4 3-2 0-3.8-.7-4.9-2"></path></symbol>
     <symbol id="icon-upload" viewBox="0 0 24 24"><path d="M12 16V4"></path><path d="M7 9l5-5 5 5"></path><path d="M5 20h14"></path></symbol>
-    <symbol id="icon-ai" viewBox="0 0 24 24"><path d="M12 3l1.8 5.1L19 10l-5.2 1.9L12 17l-1.8-5.1L5 10l5.2-1.9L12 3Z"></path><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z"></path></symbol>
     <symbol id="icon-telegram" viewBox="0 0 24 24"><path d="M21 4L3 11.2l7 2.2L17 8l-5 7.5V20l3.2-3.1 4 2.9L21 4Z"></path></symbol>
     <symbol id="icon-chart" viewBox="0 0 24 24"><path d="M4 19V5"></path><path d="M4 19h16"></path><path d="M8 15l3-4 3 2 4-6"></path></symbol>
     <symbol id="icon-alert" viewBox="0 0 24 24"><path d="M12 3l10 18H2L12 3Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></symbol>
@@ -63,18 +62,6 @@
                 <form method="post" action="{% url 'profile_build_alerts' %}" class="mt-3">
                     {% csrf_token %}
                     <button class="btn btn-outline-success w-100" type="submit">Ogohlantirishlarni tekshirish</button>
-                </form>
-            </div>
-            <div class="profile-tool-panel">
-                <h2 class="panel-title"><span class="panel-title__icon"><svg><use href="#icon-ai"></use></svg></span>AI menyu tavsiyasi</h2>
-                <div class="import-help mb-3">
-                    <strong>AI tavsiya uchun:</strong>
-                    <span>Render Environment variables bo'limida OPENAI_API_KEY qo'shilgan bo'lishi kerak. Kalit bo'lmasa tavsiya saqlanmaydi.</span>
-                </div>
-                <form method="post" action="{% url 'profile_ai_suggestion' %}">
-                    {% csrf_token %}
-                    {{ ai_form.prompt }}
-                    <button class="btn btn-accent w-100 mt-3" type="submit">AI tavsiya olish</button>
                 </form>
             </div>
             <div class="profile-tool-panel">
@@ -190,7 +177,7 @@
 <section class="profile-insights mb-5">
     <div class="profile-shell">
         <div class="row g-4">
-            <div class="col-lg-6">
+            <div class="col-lg-12">
                 <div class="profile-tool-panel h-100">
                     <h2 class="panel-title"><span class="panel-title__icon"><svg><use href="#icon-box"></use></svg></span>Mahsulot ehtiyoji</h2>
                     {% for item in requirements %}
@@ -200,19 +187,6 @@
                     </div>
                     {% empty %}
                     <p class="text-muted mb-0">Hisoblash uchun menyu yo'q.</p>
-                    {% endfor %}
-                </div>
-            </div>
-            <div class="col-lg-6">
-                <div class="profile-tool-panel h-100">
-                    <h2 class="panel-title"><span class="panel-title__icon"><svg><use href="#icon-ai"></use></svg></span>AI tavsiyalari</h2>
-                    {% for suggestion in ai_suggestions %}
-                    <article class="ai-suggestion">
-                        <strong>{{ suggestion.created_at|date:"d.m.Y H:i" }}</strong>
-                        <p>{{ suggestion.response|linebreaksbr }}</p>
-                    </article>
-                    {% empty %}
-                    <p class="text-muted mb-0">AI tavsiya hali yo'q.</p>
                     {% endfor %}
                 </div>
             </div>
