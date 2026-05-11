@@ -3,6 +3,7 @@ from datetime import date
 from decimal import Decimal
 import json
 import os
+import re
 import tempfile
 from io import StringIO
 from pathlib import Path
@@ -541,6 +542,50 @@ def _telegram_menu_text(organization):
     return "\n".join(lines)
 
 
+def _parse_telegram_credentials(text: str):
+    cleaned = text.strip()
+    if not cleaned:
+        return None
+
+    command_match = re.match(r"^/?login(?:\s+(.+))?$", cleaned, flags=re.IGNORECASE | re.DOTALL)
+    if command_match:
+        value = (command_match.group(1) or "").strip()
+        parts = value.split(maxsplit=1)
+        return tuple(parts) if len(parts) == 2 else None
+
+    login_match = re.search(r"(?:login|username)\s*[:=]\s*(\S+)", cleaned, flags=re.IGNORECASE)
+    password_match = re.search(r"(?:parol|password)\s*[:=]\s*(\S+)", cleaned, flags=re.IGNORECASE)
+    if login_match and password_match:
+        return login_match.group(1), password_match.group(1)
+
+    lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
+    if len(lines) == 2 and not any(line.startswith("/") for line in lines):
+        return lines[0], lines[1]
+
+    parts = cleaned.split()
+    if len(parts) == 2 and not cleaned.startswith("/"):
+        return parts[0], parts[1]
+    return None
+
+
+def _connect_telegram_login(chat_id: str, text: str) -> bool:
+    credentials = _parse_telegram_credentials(text)
+    if not credentials:
+        return False
+    username, password = credentials
+    user = authenticate(username=username, password=password)
+    organization = get_user_organization(user) if user else None
+    if not organization:
+        send_telegram_chat_message(chat_id, "Login yoki parol noto'g'ri, yoki foydalanuvchi tashkilotga bog'lanmagan.")
+        return True
+    TelegramSubscription.objects.update_or_create(
+        organization=organization,
+        defaults={"chat_id": chat_id, "is_active": True, "daily_digest": True},
+    )
+    send_telegram_chat_message(chat_id, f"Ulandi: {organization.name}\nEndi /today yoki /summary yuboring.")
+    return True
+
+
 @method_decorator(csrf_exempt, name="dispatch")
 class TelegramWebhookView(TemplateView):
     def post(self, request, *args, **kwargs):
@@ -561,30 +606,22 @@ class TelegramWebhookView(TemplateView):
                 chat_id,
                 "Dietologiya botiga xush kelibsiz.\n"
                 "Sayt login/paroli bilan ulanish: /login login parol\n"
+                "Yoki login va parolni 2 qatorda yuboring.\n"
                 "Oxirgi menyu va xarajat: /today\n"
                 "Qisqa xulosa: /summary",
             )
             return JsonResponse({"ok": True})
 
         if text.startswith("/login"):
-            parts = text.split(maxsplit=2)
-            if len(parts) < 3:
-                send_telegram_chat_message(chat_id, "Format: /login login parol")
+            if not _connect_telegram_login(chat_id, text):
+                send_telegram_chat_message(chat_id, "Format: /login login parol\nYoki login va parolni 2 qatorda yuboring.")
                 return JsonResponse({"ok": True})
-            user = authenticate(username=parts[1], password=parts[2])
-            organization = get_user_organization(user) if user else None
-            if not organization:
-                send_telegram_chat_message(chat_id, "Login yoki parol noto'g'ri, yoki foydalanuvchi tashkilotga bog'lanmagan.")
-                return JsonResponse({"ok": True})
-            TelegramSubscription.objects.update_or_create(
-                organization=organization,
-                defaults={"chat_id": chat_id, "is_active": True, "daily_digest": True},
-            )
-            send_telegram_chat_message(chat_id, f"Ulandi: {organization.name}\nEndi /today yoki /summary yuboring.")
             return JsonResponse({"ok": True})
 
         subscription = TelegramSubscription.objects.filter(chat_id=chat_id, is_active=True).select_related("organization").first()
         if not subscription:
+            if _connect_telegram_login(chat_id, text):
+                return JsonResponse({"ok": True})
             send_telegram_chat_message(chat_id, "Avval sayt login/paroli bilan ulaning: /login login parol")
             return JsonResponse({"ok": True})
 

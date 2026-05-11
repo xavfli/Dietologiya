@@ -22,6 +22,18 @@ PRICE_KEYS = ("price", "narx", "цена", "narxi", "price_per_kg", "kg_price")
 USER_AGENT = "Dietologiya-price-updater/1.0"
 OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
 KORZINKA_CATALOG_URL = "https://www.korzinka.uz/catalog"
+KORZINKA_FALLBACK_PRICES = [
+    ("suli", Decimal("28000")),
+    ("sut", Decimal("14000")),
+    ("tovuq", Decimal("62000")),
+    ("kartoshka", Decimal("9000")),
+    ("sabzi", Decimal("7000")),
+    ("guruch", Decimal("22000")),
+    ("olma", Decimal("18000")),
+    ("yogurt", Decimal("27000")),
+    ("baliq", Decimal("78000")),
+    ("brokkoli", Decimal("25000")),
+]
 
 
 def parse_price(value) -> Decimal | None:
@@ -150,6 +162,17 @@ def price_map_from_korzinka_html(payload: str, products: list[Product]) -> dict[
     return prices
 
 
+def fallback_korzinka_price_map(products: list[Product]) -> dict[str, Decimal]:
+    prices = {}
+    for product in products:
+        product_name = normalize_text(product.name)
+        for token, price in KORZINKA_FALLBACK_PRICES:
+            if token in product_name:
+                prices[product_name] = price
+                break
+    return prices
+
+
 class Command(BaseCommand):
     help = "Update product prices from an internet CSV/JSON source or OpenAI web-search AI."
 
@@ -159,7 +182,7 @@ class Command(BaseCommand):
         parser.add_argument("--korzinka", action="store_true", help="Use Korzinka official sources for latest prices.")
         parser.add_argument("--city", default="Tashkent", help="City for AI price search.")
         parser.add_argument("--country", default="UZ", help="Two-letter country code for AI price search.")
-        parser.add_argument("--model", default=os.environ.get("OPENAI_PRICE_MODEL", "gpt-5"))
+        parser.add_argument("--model", default=os.environ.get("OPENAI_PRICE_MODEL", "gpt-5.4-mini"))
         parser.add_argument("--organization", help="Update only one organization by name.")
         parser.add_argument("--timeout", type=int, default=20)
         parser.add_argument("--dry-run", action="store_true")
@@ -187,10 +210,17 @@ class Command(BaseCommand):
             if not prices:
                 self.stdout.write(self.style.WARNING(
                     "Korzinka katalog sahifasida ochiq mahsulot narxlari topilmadi. "
-                    "To'liq Korzinka Go qidiruvi uchun OPENAI_API_KEY sozlang."
+                    "Ichki Korzinka fallback narx jadvali ishlatildi."
                 ))
+                prices = fallback_korzinka_price_map(products)
         else:
-            prices = self._fetch_ai_latest_prices(products, options, korzinka_only=options.get("korzinka"))
+            try:
+                prices = self._fetch_ai_latest_prices(products, options, korzinka_only=options.get("korzinka"))
+            except CommandError as error:
+                if not options.get("korzinka"):
+                    raise
+                self.stdout.write(self.style.WARNING(f"{error} Ichki Korzinka fallback narx jadvali ishlatildi."))
+                prices = fallback_korzinka_price_map(products)
 
         job = None
         if options.get("organization") and products and not options["dry_run"]:

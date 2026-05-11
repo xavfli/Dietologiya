@@ -166,7 +166,7 @@ def generate_ai_menu_suggestion(organization: Organization, prompt: str) -> AISu
     dishes = list(Dish.objects.filter(organization=organization).values_list("name", flat=True)[:80])
     products = list(Product.objects.filter(organization=organization).values_list("name", flat=True)[:120])
     body = {
-        "model": os.environ.get("OPENAI_MENU_MODEL", "gpt-5"),
+        "model": os.environ.get("OPENAI_MENU_MODEL", "gpt-5.4-mini"),
         "input": (
             "Tashkilot uchun amaliy menyu tavsiyasi tuz. Mavjud taom va mahsulotlarga tayan. "
             "Javobni o'zbek tilida qisqa jadval va ogohlantirishlar bilan ber.\n"
@@ -184,8 +184,20 @@ def generate_ai_menu_suggestion(organization: Organization, prompt: str) -> AISu
     try:
         with urlopen(request, timeout=45) as response:
             payload = json.loads(response.read().decode("utf-8"))
-    except (HTTPError, URLError) as error:
-        return AISuggestion.objects.create(organization=organization, prompt=prompt, response=f"AI xatosi: {error}")
+    except HTTPError as error:
+        detail = error.read().decode("utf-8", errors="replace")
+        if error.code == 429:
+            message = (
+                "AI xatosi: OpenAI hisobida kredit yoki limit yetmadi. "
+                "Platformadagi Billing bo'limida kredit qo'shing yoki birozdan keyin qayta urinib ko'ring."
+            )
+        elif error.code == 401:
+            message = "AI xatosi: OPENAI_API_KEY noto'g'ri yoki bekor qilingan. Render Environment variables bo'limida yangi kalit qo'ying."
+        else:
+            message = f"AI xatosi: HTTP {error.code}. {detail[:300]}"
+        return AISuggestion.objects.create(organization=organization, prompt=prompt, response=message)
+    except URLError as error:
+        return AISuggestion.objects.create(organization=organization, prompt=prompt, response=f"AI xatosi: internet ulanishi ishlamadi: {error}")
 
     text = payload.get("output_text") or ""
     if not text:
