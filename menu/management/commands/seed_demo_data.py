@@ -79,21 +79,24 @@ class Command(BaseCommand):
 
         today = timezone.localdate()
         season_name = self._season_for_month(today.month)
-        season, _ = Season.objects.get_or_create(name=season_name, year=today.year)
-        diet_standard, _ = Diet.objects.get_or_create(
-            code="STD",
-            defaults={
-                "title": "Standart parhez",
-                "description": "Muvozanatli kundalik ovqatlanish",
-            },
-        )
-        diet_lite, _ = Diet.objects.get_or_create(
-            code="LITE",
-            defaults={
-                "title": "Yengil parhez",
-                "description": "Hazmi yengil ratsion",
-            },
-        )
+        seasons = {}
+        for name in ("winter", "spring", "summer", "autumn"):
+            seasons[name], _ = Season.objects.get_or_create(name=name, year=today.year)
+        season = seasons[season_name]
+        diets = {}
+        for code, title, description in [
+            ("STD", "Standart parhez", "Muvozanatli kundalik ovqatlanish"),
+            ("LITE", "Yengil parhez", "Hazmi yengil ratsion"),
+            ("NO_LACTOSE", "Laktosasiz parhez", "Sut mahsulotlariga sezgirlar uchun ratsion"),
+            ("HIGH_PROTEIN", "Oqsilga boy parhez", "Faol o'sish va tiklanish uchun oqsil miqdori yuqori menyu"),
+            ("LOW_SALT", "Tuz kamaytirilgan parhez", "Yurak-qon tomir nazorati uchun tuzi me'yorlangan ratsion"),
+        ]:
+            diets[code], _ = Diet.objects.update_or_create(
+                code=code,
+                defaults={"title": title, "description": description},
+            )
+        diet_standard = diets["STD"]
+        diet_lite = diets["LITE"]
 
         for slot, title, order in [
             ("first_breakfast", "1-nonushta", 1),
@@ -116,6 +119,18 @@ class Command(BaseCommand):
             ("Yogurt", "g", "4.50", "3.20", "6.00", 75, "26000.00"),
             ("Baliq filesi", "g", "19.00", "5.00", "0.00", 120, "76000.00"),
             ("Brokkoli", "g", "3.00", "0.40", "5.00", 34, "24000.00"),
+            ("Mol go'shti", "g", "20.00", "12.00", "0.00", 190, "88000.00"),
+            ("Tuxum", "g", "13.00", "11.00", "1.00", 155, "22000.00"),
+            ("Grechka", "g", "13.00", "3.00", "72.00", 343, "26000.00"),
+            ("Makaron", "g", "11.00", "1.50", "72.00", 350, "18000.00"),
+            ("Karam", "g", "1.30", "0.10", "6.00", 27, "6000.00"),
+            ("Bodring", "g", "0.80", "0.10", "3.00", 16, "12000.00"),
+            ("Pomidor", "g", "0.90", "0.20", "4.00", 18, "16000.00"),
+            ("Banan", "g", "1.10", "0.30", "23.00", 89, "24000.00"),
+            ("Non", "g", "8.00", "2.00", "49.00", 250, "7000.00"),
+            ("O'simlik yog'i", "ml", "0.00", "100.00", "0.00", 884, "24000.00"),
+            ("Qatiq", "ml", "3.00", "2.50", "4.00", 56, "13000.00"),
+            ("Loviya", "g", "21.00", "1.00", "63.00", 333, "30000.00"),
         ]:
             product, _ = Product.objects.update_or_create(
                 organization=organization,
@@ -167,6 +182,48 @@ class Command(BaseCommand):
                 35,
                 [("Baliq filesi", 140), ("Brokkoli", 120)],
             ),
+            (
+                "Grechkali mol go'shti",
+                diets["HIGH_PROTEIN"],
+                "Oqsil va murakkab uglevodga boy tushlik.",
+                50,
+                [("Mol go'shti", 120), ("Grechka", 90), ("Sabzi", 40), ("O'simlik yog'i", 8)],
+            ),
+            (
+                "Tuxumli sabzavot salati",
+                diet_lite,
+                "Yengil oqsilli salat.",
+                15,
+                [("Tuxum", 60), ("Bodring", 80), ("Pomidor", 80), ("Karam", 60)],
+            ),
+            (
+                "Loviya sho'rva",
+                diets["LOW_SALT"],
+                "To'yimli va tuzi kamaytirilgan sho'rva.",
+                45,
+                [("Loviya", 90), ("Kartoshka", 80), ("Sabzi", 50), ("Karam", 50)],
+            ),
+            (
+                "Qatiqli banan",
+                diet_lite,
+                "Ikkinchi nonushta uchun yengil tamaddi.",
+                8,
+                [("Qatiq", 180), ("Banan", 80)],
+            ),
+            (
+                "Sabzavotli makaron",
+                diet_standard,
+                "Bolalar uchun yumshoq garnirli taom.",
+                30,
+                [("Makaron", 90), ("Pomidor", 60), ("Sabzi", 40), ("O'simlik yog'i", 8)],
+            ),
+            (
+                "Laktosasiz tovuqli salat",
+                diets["NO_LACTOSE"],
+                "Sut mahsulotlarisiz oqsilli salat.",
+                20,
+                [("Tovuq filesi", 110), ("Bodring", 80), ("Pomidor", 70), ("Karam", 60)],
+            ),
         ]
 
         meal_lookup = {meal.slot: meal for meal in MealTime.objects.all()}
@@ -189,7 +246,7 @@ class Command(BaseCommand):
         week_start = today - timedelta(days=today.weekday())
         for day_offset in range(7):
             menu_date = week_start + timedelta(days=day_offset)
-            daily_diet = diet_lite if day_offset in (2, 5) else diet_standard
+            daily_diet = [diet_standard, diet_lite, diets["NO_LACTOSE"], diets["HIGH_PROTEIN"], diets["LOW_SALT"], diet_lite, diet_standard][day_offset]
             people_count = 120 + (day_offset % 3) * 5
             menu_day, _ = MenuDay.objects.update_or_create(
                 organization=organization,
@@ -200,28 +257,28 @@ class Command(BaseCommand):
             MenuEntry.objects.create(
                 menu_day=menu_day,
                 mealtime=meal_lookup["first_breakfast"],
-                dish=dish_lookup["Sutli suli bo'tqasi"],
+                dish=dish_lookup["Sutli suli bo'tqasi"] if day_offset != 2 else dish_lookup["Tuxumli sabzavot salati"],
                 portions=people_count,
                 notes="Bolalar uchun standart porsiya",
             )
             MenuEntry.objects.create(
                 menu_day=menu_day,
                 mealtime=meal_lookup["second_breakfast"],
-                dish=dish_lookup["Mevali yogurt"],
+                dish=dish_lookup["Qatiqli banan"] if day_offset in (1, 4) else dish_lookup["Mevali yogurt"],
                 portions=people_count,
                 notes="Mevali yengil tamaddi",
             )
             MenuEntry.objects.create(
                 menu_day=menu_day,
                 mealtime=meal_lookup["lunch"],
-                dish=dish_lookup["Tovuqli sabzavot sho'rva"],
+                dish=[dish_lookup["Tovuqli sabzavot sho'rva"], dish_lookup["Loviya sho'rva"], dish_lookup["Laktosasiz tovuqli salat"], dish_lookup["Grechkali mol go'shti"], dish_lookup["Loviya sho'rva"], dish_lookup["Tovuqli sabzavot sho'rva"], dish_lookup["Grechkali mol go'shti"]][day_offset],
                 portions=people_count,
                 notes="Asosiy issiq ovqat",
             )
             MenuEntry.objects.create(
                 menu_day=menu_day,
                 mealtime=meal_lookup["buffet"],
-                dish=dish_lookup["Qaynatilgan guruch"],
+                dish=dish_lookup["Sabzavotli makaron"] if day_offset in (3, 6) else dish_lookup["Qaynatilgan guruch"],
                 portions=people_count,
                 notes="Qo'shimcha garnir",
             )

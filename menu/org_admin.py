@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.admin import AdminSite
 from django.db.models import Q
 
-from .models import Diet, Dish, MealTime, MenuAlert, MenuDay, MenuEntry, PriceHistory, Product
+from .models import Diet, Dish, MealTime, MenuAlert, MenuDay, MenuEntry, PriceHistory, Product, Season
 from .services import get_user_organization
 
 
@@ -48,8 +48,47 @@ class OrganizationScopedAdmin(admin.ModelAdmin):
         return bool(get_user_organization(request.user))
 
 
+class OrganizationReadOnlyMixin:
+    def has_module_permission(self, request):
+        return bool(get_user_organization(request.user))
+
+    def has_view_permission(self, request, obj=None):
+        return bool(get_user_organization(request.user))
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def get_readonly_fields(self, request, obj=None):
+        fields = [field.name for field in self.model._meta.fields]
+        return fields
+
+
+@admin.register(Season, site=organization_admin_site)
+class OrganizationSeasonAdmin(OrganizationReadOnlyMixin, admin.ModelAdmin):
+    list_display = ("name", "year")
+    list_filter = ("name", "year")
+
+
+@admin.register(Diet, site=organization_admin_site)
+class OrganizationDietAdmin(OrganizationReadOnlyMixin, admin.ModelAdmin):
+    list_display = ("code", "title")
+    search_fields = ("code", "title")
+
+
+@admin.register(MealTime, site=organization_admin_site)
+class OrganizationMealTimeAdmin(OrganizationReadOnlyMixin, admin.ModelAdmin):
+    list_display = ("title", "slot", "order")
+    ordering = ("order",)
+
+
 @admin.register(Dish, site=organization_admin_site)
-class OrganizationDishAdmin(OrganizationScopedAdmin):
+class OrganizationDishAdmin(OrganizationReadOnlyMixin, OrganizationScopedAdmin):
     list_display = ("name", "diet", "duration_minutes", "total_calories", "total_cost")
     list_filter = ("diet",)
     fields = ("name", "diet", "duration_minutes", "description")
@@ -62,7 +101,7 @@ class OrganizationDishAdmin(OrganizationScopedAdmin):
 
 
 @admin.register(Product, site=organization_admin_site)
-class OrganizationProductAdmin(OrganizationScopedAdmin):
+class OrganizationProductAdmin(OrganizationReadOnlyMixin, OrganizationScopedAdmin):
     list_display = ("name", "unit", "protein", "fat", "carbs", "calories", "price_per_kg")
     list_filter = ("unit",)
     search_fields = ("name",)
@@ -70,13 +109,12 @@ class OrganizationProductAdmin(OrganizationScopedAdmin):
 
 
 @admin.register(PriceHistory, site=organization_admin_site)
-class OrganizationPriceHistoryAdmin(OrganizationScopedAdmin):
+class OrganizationPriceHistoryAdmin(OrganizationReadOnlyMixin, OrganizationScopedAdmin):
     list_display = ("product", "old_price", "new_price", "source_type", "created_at")
     list_filter = ("source_type", "created_at")
     search_fields = ("product__name",)
 
-    def has_add_permission(self, request):
-        return False
+    fields = ("product", "organization", "old_price", "new_price", "source_type", "source_label", "confidence", "effective_date", "created_at")
 
 
 @admin.register(MenuAlert, site=organization_admin_site)
