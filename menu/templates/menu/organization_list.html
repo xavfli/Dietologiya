@@ -2,14 +2,47 @@
 {% block title %}Tashkilotlar | Dietologiya{% endblock %}
 
 {% block content %}
-<section class="inner-hero mb-5">
-    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3">
-        <div>
-            <span class="eyebrow text-dark">TASHKILOTLAR REESTRI</span>
-            <h1 class="section-title mb-2">Ovqatlanish tizimiga ulangan tashkilotlar</h1>
-            <p class="text-muted mb-0">Har bir tashkilot uchun kunlik taomnoma, parhez va hisob-kitoblar yuritiladi.</p>
+<section class="page-hero-grid mb-5">
+    <div class="page-hero-copy">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3">
+            <div>
+                <span class="eyebrow text-dark">TASHKILOTLAR REESTRI</span>
+                <h1 class="section-title mb-2">Ovqatlanish tizimiga ulangan tashkilotlar</h1>
+                <p class="text-muted mb-0">Har bir tashkilot uchun kunlik taomnoma, parhez va hisob-kitoblar yuritiladi.</p>
+            </div>
+            <a href="{% url 'login' %}" class="btn btn-primary rounded-pill px-4 py-3">Profilga kirish</a>
         </div>
-        <a href="{% url 'home' %}" class="btn btn-outline-dark">Bosh sahifaga qaytish</a>
+        <div class="page-stats mt-4">
+            <div><span>Reestr</span><strong>{{ organizations|length }}</strong><em>tashkilot</em></div>
+            <div><span>Nazorat</span><strong>24/7</strong><em>kabinet</em></div>
+            <div><span>Hisobot</span><strong>Word</strong><em>Excel</em></div>
+        </div>
+    </div>
+    <aside class="page-hero-visual" aria-label="Tashkilotlar dashboard namunasi">
+        <div class="org-dashboard-mock">
+            <div class="org-dashboard-mock__top">
+                <span>Bugungi reestr</span>
+                <strong>Faol tashkilotlar</strong>
+            </div>
+            <div class="org-dashboard-mock__bars">
+                <i style="--bar-width: 82%"></i>
+                <i style="--bar-width: 64%"></i>
+                <i style="--bar-width: 91%"></i>
+            </div>
+            <div class="org-dashboard-mock__grid">
+                <div><span>Menyu</span><strong>31 kun</strong></div>
+                <div><span>Xarajat</span><strong>nazorat</strong></div>
+                <div><span>Parhez</span><strong>filtr</strong></div>
+                <div><span>Bot</span><strong>/summary</strong></div>
+            </div>
+        </div>
+    </aside>
+</section>
+
+<section class="mb-4">
+    <div class="section-heading section-header text-center mx-auto" style="max-width: 660px;">
+        <h2 class="section-title mb-3">Tashkilot kartalari</h2>
+        <p class="text-muted mb-0">Har bir karta real kabinetga ulanadigan muassasa ma'lumotlarini ko'rsatadi.</p>
     </div>
 </section>
 
@@ -17,13 +50,20 @@
     <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
         {% for org in organizations %}
         <div class="col">
-            <article class="org-card h-100">
-                <div class="org-badge">Reestr</div>
+            <article class="org-card org-card--rich h-100">
+                <div class="org-card__head">
+                    <div class="org-badge">Reestr</div>
+                    <span class="org-card__status">Faol</span>
+                </div>
                 <h3>{{ org.name }}</h3>
                 <p>{{ org.address|default:"Manzil kiritilmagan" }}</p>
                 <div class="org-meta">
                     <span>{{ org.contact|default:"Aloqa kiritilmagan" }}</span>
                     <span>{{ org.menu_days_count }} ta menyu kuni</span>
+                </div>
+                <div class="org-card__footer">
+                    <span>Menyu</span>
+                    <strong>Parhez · Xarajat · Hisobot</strong>
                 </div>
             </article>
         </div>
@@ -32,6 +72,21 @@
             <div class="empty-panel">Tashkilotlar mavjud emas. Administrator panelidan yozuv qo'shing.</div>
         </div>
         {% endfor %}
+    </div>
+</section>
+
+<section class="final-cta-section my-5">
+    <div class="container">
+        <div class="final-cta">
+            <div>
+                <span class="eyebrow text-dark">KABINET</span>
+                <h2>Tashkilot menyusi va xarajatlarini bitta profil orqali boshqaring.</h2>
+            </div>
+            <div class="final-cta__actions">
+                <a href="{% url 'login' %}" class="btn btn-primary rounded-pill px-4 py-3">Profilga kirish</a>
+                <a href="{% url 'home' %}" class="btn btn-outline-light rounded-pill px-4 py-3">Bosh sahifa</a>
+            </div>
+        </div>
     </div>
 </section>
 {% endblock %}

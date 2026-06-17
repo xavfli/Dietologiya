@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     const revealElements = document.querySelectorAll(
-        ".template-feature, .feature-card, .content-panel, .org-card, .inner-hero, .app-table, .about-img, .about-check, .section-header, .profile-stat-card, .profile-menu-card, .profile-calendar__summary-card, .timeline-item, .journey-item"
+        ".template-feature, .feature-card, .content-panel, .org-card, .inner-hero, .app-table, .about-img, .about-check, .section-header, .profile-stat-card, .profile-menu-card, .profile-calendar__summary-card, .timeline-item, .journey-item, .live-hero-board, .brief-info-card, .dashboard-story__panel, .news-preview-card, .page-hero-copy, .page-hero-visual, .login-panel, .login-preview, .admin-preview-card, .admin-preview-board"
     );
     const navbar = document.querySelector(".site-navbar");
 
@@ -41,30 +41,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    const interactiveCards = document.querySelectorAll(
-        ".template-feature, .feature-card, .org-card, .profile-stat-card, .profile-menu-card, .content-panel, .inner-hero"
-    );
-
-    interactiveCards.forEach((card) => {
-        card.classList.add("fx-tilt");
-        card.addEventListener("mousemove", (event) => {
-            if (window.matchMedia("(max-width: 991px)").matches) {
-                return;
-            }
-            const rect = card.getBoundingClientRect();
-            const px = (event.clientX - rect.left) / rect.width;
-            const py = (event.clientY - rect.top) / rect.height;
-            const rotateY = (px - 0.5) * 7;
-            const rotateX = (0.5 - py) * 7;
-            card.style.setProperty("--fx-rotate-x", `${rotateX}deg`);
-            card.style.setProperty("--fx-rotate-y", `${rotateY}deg`);
-        });
-        card.addEventListener("mouseleave", () => {
-            card.style.setProperty("--fx-rotate-x", "0deg");
-            card.style.setProperty("--fx-rotate-y", "0deg");
-        });
-    });
-
     const buttons = document.querySelectorAll(".btn");
     buttons.forEach((button) => {
         button.classList.add("fx-ripple-host");
@@ -84,21 +60,53 @@ document.addEventListener("DOMContentLoaded", function () {
         const triggers = calendar.querySelectorAll("[data-day-trigger]");
         const panels = calendar.querySelectorAll("[data-day-panel]");
 
-        const activateDay = (dayId) => {
+        const activateDay = (dayId, updateUrl = true) => {
+            let activeTrigger = null;
             triggers.forEach((trigger) => {
                 const isActive = trigger.dataset.dayTrigger === dayId;
                 trigger.classList.toggle("is-active", isActive);
                 trigger.setAttribute("aria-selected", isActive ? "true" : "false");
+                trigger.tabIndex = isActive ? 0 : -1;
+                if (isActive) {
+                    activeTrigger = trigger;
+                }
             });
 
             panels.forEach((panel) => {
                 const isActive = panel.dataset.dayPanel === dayId;
                 panel.classList.toggle("d-none", !isActive);
+                panel.hidden = !isActive;
+                if (isActive) {
+                    panel.classList.add("is-visible");
+                }
             });
+
+            if (updateUrl && activeTrigger && window.history.replaceState) {
+                const url = new URL(window.location.href);
+                url.searchParams.set("day", activeTrigger.dataset.dayDate);
+                window.history.replaceState({}, "", url);
+            }
         };
 
-        triggers.forEach((trigger) => {
+        triggers.forEach((trigger, index) => {
             trigger.addEventListener("click", () => activateDay(trigger.dataset.dayTrigger));
+            trigger.addEventListener("keydown", (event) => {
+                if (!["ArrowLeft", "ArrowRight"].includes(event.key)) {
+                    return;
+                }
+                event.preventDefault();
+                const direction = event.key === "ArrowRight" ? 1 : -1;
+                const nextIndex = (index + direction + triggers.length) % triggers.length;
+                const nextTrigger = triggers[nextIndex];
+                activateDay(nextTrigger.dataset.dayTrigger);
+                nextTrigger.focus();
+            });
         });
+
+        const initialTrigger = calendar.querySelector("[data-day-trigger].is-active") || triggers[0];
+        if (initialTrigger) {
+            activateDay(initialTrigger.dataset.dayTrigger, false);
+        }
     });
+
 });

@@ -1,15 +1,11 @@
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
-import json
-import os
-import re
 import tempfile
 from io import StringIO
 from pathlib import Path
 
 from django.contrib import messages
-from django.contrib.auth import authenticate
 from django.contrib.auth import logout
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView
@@ -18,27 +14,29 @@ from django.core.management.base import CommandError
 from django.db import connection
 from django.db import OperationalError
 from django.db.models import Count, Prefetch
-from django.http import HttpResponseRedirect, HttpResponse, JsonResponse
+from django.http import HttpResponseRedirect, HttpResponse
 from django.shortcuts import redirect
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import ListView, TemplateView
 
 from .docx_export import build_docx
-from .forms import MenuUploadForm, PriceSourceForm, TelegramSettingsForm
-from .models import ImportJob, MenuAlert, MenuDay, MenuEntry, Organization, PriceHistory, TelegramSubscription
+from .forms import AIAgentForm, MenuUploadForm, PriceSourceForm
+from .models import AISuggestion, ImportJob, MenuAlert, MenuDay, MenuEntry, Organization, PriceHistory
+from .spreadsheet_export import build_xlsx
 from .services import (
+    AIAgentError,
     build_menu_alerts,
     create_upload_job,
+    generate_ai_agent_response,
+    get_ai_agent_config,
     get_user_organization,
+    inspect_menu_upload,
     monthly_cost_chart,
     monthly_cost_total,
     product_requirement_summary,
-    send_telegram_chat_message,
-    telegram_api_call,
     top_cost_products,
+    user_has_org_permission,
 )
 
 
@@ -56,6 +54,8 @@ MONTH_LABELS = {
     11: "Noyabr",
     12: "Dekabr",
 }
+
+SEASON_PROFILE_ORDER = ("winter", "spring", "summer", "autumn")
 
 
 HOME_FEATURES = [
@@ -89,38 +89,68 @@ PLATFORM_FEATURES = [
     {
         "index": "01",
         "title": "Mavsumiy taomnoma",
-        "text": "Yil va mavsum bo'yicha kunlik menyularni alohida yuritish va nazorat qilish.",
-        "icon": "menu/img/icon-1.png",
+        "text": "Yil va mavsum bo'yicha menyularni rejalang. Har bir fasl uchun alohida taom ro'yxati.",
+        "icon": "seasonal-menu",
     },
     {
         "index": "02",
         "title": "Parhez turlari",
-        "text": "1-parhez, laktosasiz va boshqa ovqatlanish rejimlarini qo'llab-quvvatlash.",
-        "icon": "menu/img/icon-2.png",
+        "text": "Standart, laktosasiz va boshqa maxsus parhez rejalarini boshqaring.",
+        "icon": "diet",
     },
     {
         "index": "03",
         "title": "Taom tarkibi",
-        "text": "Har bir taom uchun mahsulotlar, grammovka va retsept tarkibini saqlash.",
-        "icon": "menu/img/icon-3.png",
+        "text": "Har bir taom uchun retsept, ingredientlar va grammovkani kiriting.",
+        "icon": "recipe",
     },
     {
         "index": "04",
         "title": "Oziq qiymati",
-        "text": "Oqsil, yog', uglevod va kaloriyani avtomatik hisoblash.",
-        "icon": "menu/img/icon-4.svg",
+        "text": "Oqsil, yog', uglevod va kaloriyani avtomatik hisoblang. Norma bilan solishtiring.",
+        "icon": "nutrition",
     },
     {
         "index": "05",
         "title": "Narx hisob-kitobi",
-        "text": "Kishi boshiga va umumiy xarajatlarni real vaqtda ko'rsatish.",
-        "icon": "menu/img/icon-5.svg",
+        "text": "Umumiy va kishi boshiga xarajatni real vaqtda ko'ring. Oylik dinamika grafigi.",
+        "icon": "cost",
     },
     {
         "index": "06",
-        "title": "Hisobotlarga tayyor",
-        "text": "Excel va PDF eksporti uchun kerakli struktura va jadval ko'rinishi.",
-        "icon": "menu/img/icon-6.svg",
+        "title": "Word hisobotlar",
+        "text": "Bir kunlik yoki butun davr uchun xarajat hisobotini Word formatida yuklab oling.",
+        "icon": "word-report",
+    },
+    {
+        "index": "07",
+        "title": "Excel/ZIP import",
+        "text": "Menyu va mahsulot ma'lumotlarini Excel yoki ZIP arxivdan tezda import qiling.",
+        "icon": "import",
+    },
+    {
+        "index": "08",
+        "title": "Menyu ogohlantirishlari",
+        "text": "Laktosiz menyuda sut mahsuloti yoki yuqori xarajat holatlari haqida ogohlantirish.",
+        "icon": "alerts",
+    },
+    {
+        "index": "09",
+        "title": "Narxlar tarixi",
+        "text": "Har bir mahsulot uchun narx o'zgarishlarini kuzating va Korzinka orqali yangilang.",
+        "icon": "price-history",
+    },
+    {
+        "index": "10",
+        "title": "Mahsulot ehtiyoji",
+        "text": "Menyu asosida kerakli mahsulotlar ro'yxatini avtomatik hisoblang.",
+        "icon": "requirements",
+    },
+    {
+        "index": "11",
+        "title": "Admin panel",
+        "text": "Global administrator barcha tashkilotlar, foydalanuvchilar va tizim sozlamalarini boshqaradi.",
+        "icon": "admin",
     },
 ]
 
@@ -230,12 +260,13 @@ class HomeView(TemplateView):
             organizations = DEMO_ORGANIZATIONS
             if not db_warning:
                 db_warning = "Sayt demo ma'lumotlar bilan ko'rsatilmoqda."
-        context["organizations"] = organizations
+        context["organizations"] = organizations[:4]
         context["stats"] = stats
         context["db_warning"] = db_warning
         context["about_points"] = HOME_FEATURES
         context["dietology_info"] = DIETOLOGY_INFO
         context["platform_features"] = PLATFORM_FEATURES
+        context["news_items"] = NEWS_ITEMS[:6]
         return context
 
     def _get_stats(self):
@@ -304,7 +335,7 @@ class ProfileView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         organization = get_user_organization(self.request.user)
-        menu_days = (
+        menu_days = list(
             MenuDay.objects.filter(organization=organization)
             .select_related("season", "diet")
             .prefetch_related(
@@ -318,6 +349,7 @@ class ProfileView(LoginRequiredMixin, TemplateView):
 
         summaries = []
         summary_by_date = {}
+        season_buckets = {}
         total_people = 0
         total_cost = Decimal("0")
         total_calories = 0
@@ -339,45 +371,102 @@ class ProfileView(LoginRequiredMixin, TemplateView):
             }
             summaries.append(summary)
             summary_by_date[day.date] = summary
+            if day.season_id:
+                season_key = day.season.name
+                bucket = season_buckets.setdefault(
+                    season_key,
+                    {
+                        "key": season_key,
+                        "label": day.season.get_name_display(),
+                        "days_count": 0,
+                        "people_total": 0,
+                        "cost_total": Decimal("0"),
+                        "calories_total": 0,
+                        "latest_date": day.date,
+                    },
+                )
+                bucket["days_count"] += 1
+                bucket["people_total"] += day.people_count
+                bucket["cost_total"] += day_cost
+                bucket["calories_total"] += day_calories
+                if day.date > bucket["latest_date"]:
+                    bucket["latest_date"] = day.date
 
         today = timezone.localdate()
-        week_start = today.fromordinal(today.toordinal() - today.weekday())
-        week_dates = [week_start.fromordinal(week_start.toordinal() + index) for index in range(7)]
-        selected_summary = summary_by_date.get(today)
-        if not selected_summary:
-            selected_summary = next(
-                (
-                    summary_by_date[day_date]
-                    for day_date in week_dates
-                    if day_date in summary_by_date
-                ),
-                None,
+        requested_week = self.request.GET.get("week", "")
+        try:
+            requested_reference = date.fromisoformat(requested_week)
+        except ValueError:
+            current_week_start = today - timedelta(days=today.weekday())
+            current_week_end = current_week_start + timedelta(days=6)
+            has_current_week_menu = any(
+                current_week_start <= day.date <= current_week_end
+                for day in menu_days
             )
+            requested_reference = today if has_current_week_menu or not menu_days else menu_days[0].date
 
+        week_start = requested_reference - timedelta(days=requested_reference.weekday())
+        week_end = week_start + timedelta(days=6)
+        calendar_dates = [week_start + timedelta(days=index) for index in range(7)]
+        week_summaries = sorted(
+            (
+                summary
+                for summary in summaries
+                if week_start <= summary["day"].date <= week_end
+            ),
+            key=lambda summary: summary["day"].date,
+        )
+
+        selected_summary = None
+        requested_day = self.request.GET.get("day", "")
+        try:
+            requested_date = date.fromisoformat(requested_day)
+        except ValueError:
+            requested_date = None
+        if requested_date in calendar_dates:
+            selected_summary = summary_by_date.get(requested_date)
+        if not selected_summary and week_start <= today <= week_end:
+            selected_summary = summary_by_date.get(today)
+        if not selected_summary and week_summaries:
+            selected_summary = week_summaries[0]
+
+        selected_day_id = selected_summary["day_key"] if selected_summary else ""
         calendar_days = []
-        selected_day_id = selected_summary["day_key"] if selected_summary else "today-empty"
-        for day_date in week_dates:
+        for day_date in calendar_dates:
             summary = summary_by_date.get(day_date)
             calendar_days.append(
                 {
                     "date": day_date,
                     "summary": summary,
-                    "is_current_month": True,
                     "is_today": day_date == today,
-                    "is_selected": bool(day_date == today and (not summary or summary["day_key"] == selected_day_id)),
+                    "is_selected": bool(summary and summary["day_key"] == selected_day_id),
                 }
             )
-        week_summaries = [summary_by_date[day_date] for day_date in week_dates if day_date in summary_by_date]
-        week_label = f"{week_dates[0].day}-{week_dates[-1].day} {MONTH_LABELS[week_dates[-1].month]} {week_dates[-1].year}"
+
+        ordered_season_keys = [
+            key for key in SEASON_PROFILE_ORDER if key in season_buckets
+        ] + sorted(key for key in season_buckets if key not in SEASON_PROFILE_ORDER)
+        season_summaries = []
+        for season_key in ordered_season_keys:
+            season = season_buckets[season_key]
+            season["week_reference"] = season["latest_date"].isoformat()
+            season["day_reference"] = season["latest_date"].isoformat()
+            season_summaries.append(season)
 
         context["organization"] = organization
         context["menu_summaries"] = summaries
-        context["week_menu_summaries"] = week_summaries
+        context["season_summaries"] = season_summaries
+        context["calendar_menu_summaries"] = week_summaries
         context["calendar_weekdays"] = ["Du", "Se", "Cho", "Pa", "Ju", "Sha", "Yak"]
         context["calendar_days"] = calendar_days
-        context["calendar_month_label"] = week_label
+        context["calendar_month_label"] = (
+            f"{week_start.day} {MONTH_LABELS[week_start.month]} - "
+            f"{week_end.day} {MONTH_LABELS[week_end.month]} {week_end.year}"
+        )
+        context["calendar_prev_week"] = (week_start - timedelta(days=7)).isoformat()
+        context["calendar_next_week"] = (week_start + timedelta(days=7)).isoformat()
         context["selected_day_id"] = selected_day_id
-        context["today_summary"] = summary_by_date.get(today)
+        context["selected_summary"] = selected_summary
         context["profile_overview"] = {
             "days_count": len(summaries),
             "people_total": total_people,
@@ -386,34 +475,39 @@ class ProfileView(LoginRequiredMixin, TemplateView):
         }
         context["price_form"] = PriceSourceForm()
         context["upload_form"] = MenuUploadForm()
-        context["telegram_form"] = TelegramSettingsForm(
-            initial={
-                "chat_id": getattr(getattr(organization, "telegram_subscription", None), "chat_id", ""),
-                "daily_digest": getattr(getattr(organization, "telegram_subscription", None), "daily_digest", True),
-            }
-        )
+        context["ai_agent_form"] = AIAgentForm()
+        context["ai_agent_config"] = get_ai_agent_config()
+        context["ai_suggestions"] = AISuggestion.objects.filter(organization=organization)[:5]
         context["monthly_cost_chart"] = monthly_cost_chart(organization)
         context["monthly_cost_total"] = monthly_cost_total(organization)
         context["top_products"] = top_cost_products(organization)
         context["requirements"] = product_requirement_summary(organization)[:12]
         context["price_history"] = PriceHistory.objects.filter(organization=organization).select_related("product")[:8]
         context["menu_alerts"] = MenuAlert.objects.filter(organization=organization, is_resolved=False)[:8]
-        context["import_jobs"] = ImportJob.objects.filter(organization=organization)[:6]
+        context["can_manage_menu"] = user_has_org_permission(self.request.user, "manage_menu", organization)
+        context["can_manage_prices"] = user_has_org_permission(self.request.user, "manage_prices", organization)
+        context["can_view_reports"] = user_has_org_permission(self.request.user, "view_reports", organization)
         return context
 
 
 class OrganizationActionMixin(LoginRequiredMixin):
     login_url = reverse_lazy("login")
+    required_permission = None
 
     def dispatch(self, request, *args, **kwargs):
         organization = get_user_organization(request.user)
         if not organization:
             return redirect("login")
         self.organization = organization
+        if self.required_permission and not user_has_org_permission(request.user, self.required_permission, organization):
+            messages.error(request, "Bu amal uchun rolingizda ruxsat yo'q.")
+            return redirect("profile")
         return super().dispatch(request, *args, **kwargs)
 
 
 class PriceUpdateView(OrganizationActionMixin, TemplateView):
+    required_permission = "manage_prices"
+
     def post(self, request, *args, **kwargs):
         form = PriceSourceForm(request.POST)
         if not form.is_valid():
@@ -445,7 +539,30 @@ class PriceUpdateView(OrganizationActionMixin, TemplateView):
         return redirect("profile")
 
 
+class MenuUploadPreviewView(OrganizationActionMixin, TemplateView):
+    required_permission = "manage_menu"
+    template_name = "menu/import_preview.html"
+
+    def post(self, request, *args, **kwargs):
+        form = MenuUploadForm(request.POST, request.FILES)
+        if not form.is_valid():
+            messages.error(request, form.errors.as_text())
+            return redirect("profile")
+
+        uploaded = form.cleaned_data["file"]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir) / uploaded.name
+            with temp_path.open("wb") as destination:
+                for chunk in uploaded.chunks():
+                    destination.write(chunk)
+            preview = inspect_menu_upload(temp_path)
+
+        return self.render_to_response({"preview": preview, "organization": self.organization})
+
+
 class MenuUploadView(OrganizationActionMixin, TemplateView):
+    required_permission = "manage_menu"
+
     def post(self, request, *args, **kwargs):
         form = MenuUploadForm(request.POST, request.FILES)
         if not form.is_valid():
@@ -482,180 +599,30 @@ class MenuUploadView(OrganizationActionMixin, TemplateView):
 
 
 class AlertBuildView(OrganizationActionMixin, TemplateView):
+    required_permission = "manage_menu"
+
     def post(self, request, *args, **kwargs):
         count = build_menu_alerts(self.organization)
         messages.success(request, f"{count} ta ogohlantirish yaratildi.")
         return redirect("profile")
 
 
-class TelegramSettingsView(OrganizationActionMixin, TemplateView):
+class AIAgentView(OrganizationActionMixin, TemplateView):
+    required_permission = "view_reports"
+
     def post(self, request, *args, **kwargs):
-        form = TelegramSettingsForm(request.POST)
+        form = AIAgentForm(request.POST)
         if not form.is_valid():
-            messages.error(request, form.errors.as_text())
+            messages.error(request, "AI agent savoli 5 dan 2000 belgigacha bo'lishi kerak.")
             return redirect("profile")
-        TelegramSubscription.objects.update_or_create(
-            organization=self.organization,
-            defaults={
-                "chat_id": form.cleaned_data["chat_id"],
-                "daily_digest": form.cleaned_data["daily_digest"],
-                "is_active": True,
-            },
-        )
-        messages.success(request, "Telegram sozlamasi saqlandi.")
-        return redirect("profile")
 
-
-def _telegram_menu_text(organization):
-    menu_day = MenuDay.objects.filter(organization=organization).order_by("-date").first()
-    if not menu_day:
-        return f"{organization.name}: menyu ma'lumotlari hali yo'q."
-
-    lines = [
-        organization.name,
-        f"Sana: {menu_day.date:%d.%m.%Y}",
-        f"Taomlanuvchilar: {menu_day.people_count}",
-        f"Umumiy xarajat: {menu_day.total_cost:.0f} so'm",
-        f"Kishi boshiga: {menu_day.per_person_cost:.0f} so'm",
-        "",
-        "Retseptlar:",
-    ]
-    for entry in menu_day.entries.select_related("mealtime", "dish").all():
-        lines.append(f"- {entry.mealtime.title}: {entry.dish.name} ({entry.portions} porsiya)")
-    return "\n".join(lines)
-
-
-def _parse_telegram_credentials(text: str):
-    cleaned = text.strip()
-    if not cleaned:
-        return None
-
-    command_match = re.match(r"^/?login(?:\s+(.+))?$", cleaned, flags=re.IGNORECASE | re.DOTALL)
-    if command_match:
-        value = (command_match.group(1) or "").strip()
-        parts = value.split(maxsplit=1)
-        return tuple(parts) if len(parts) == 2 else None
-
-    login_match = re.search(r"(?:login|username)\s*[:=]\s*(\S+)", cleaned, flags=re.IGNORECASE)
-    password_match = re.search(r"(?:parol|password)\s*[:=]\s*(\S+)", cleaned, flags=re.IGNORECASE)
-    if login_match and password_match:
-        return login_match.group(1), password_match.group(1)
-
-    lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
-    if len(lines) == 2 and not any(line.startswith("/") for line in lines):
-        return lines[0], lines[1]
-
-    parts = cleaned.split()
-    if len(parts) == 2 and not cleaned.startswith("/"):
-        return parts[0], parts[1]
-    return None
-
-
-def _connect_telegram_login(chat_id: str, text: str) -> bool:
-    credentials = _parse_telegram_credentials(text)
-    if not credentials:
-        return False
-    username, password = credentials
-    user = authenticate(username=username, password=password)
-    organization = get_user_organization(user) if user else None
-    if not organization:
-        send_telegram_chat_message(chat_id, "Login yoki parol noto'g'ri, yoki foydalanuvchi tashkilotga bog'lanmagan.")
-        return True
-    TelegramSubscription.objects.update_or_create(
-        organization=organization,
-        defaults={"chat_id": chat_id, "is_active": True, "daily_digest": True},
-    )
-    send_telegram_chat_message(chat_id, f"Ulandi: {organization.name}\nEndi /today yoki /summary yuboring.")
-    return True
-
-
-@method_decorator(csrf_exempt, name="dispatch")
-class TelegramWebhookView(TemplateView):
-    def post(self, request, *args, **kwargs):
         try:
-            payload = json.loads(request.body.decode("utf-8"))
-        except json.JSONDecodeError:
-            return JsonResponse({"ok": False}, status=400)
-
-        message = payload.get("message") or payload.get("edited_message") or {}
-        chat = message.get("chat") or {}
-        chat_id = str(chat.get("id") or "")
-        text = (message.get("text") or "").strip()
-        if not chat_id:
-            return JsonResponse({"ok": True})
-
-        if text.startswith(("/start", "/help")):
-            send_telegram_chat_message(
-                chat_id,
-                "Dietologiya botiga xush kelibsiz.\n"
-                "Sayt login/paroli bilan ulanish: /login login parol\n"
-                "Yoki login va parolni 2 qatorda yuboring.\n"
-                "Oxirgi menyu va xarajat: /today\n"
-                "Qisqa xulosa: /summary",
-            )
-            return JsonResponse({"ok": True})
-
-        if text.startswith("/login"):
-            if not _connect_telegram_login(chat_id, text):
-                send_telegram_chat_message(chat_id, "Format: /login login parol\nYoki login va parolni 2 qatorda yuboring.")
-                return JsonResponse({"ok": True})
-            return JsonResponse({"ok": True})
-
-        subscription = TelegramSubscription.objects.filter(chat_id=chat_id, is_active=True).select_related("organization").first()
-        if not subscription:
-            if _connect_telegram_login(chat_id, text):
-                return JsonResponse({"ok": True})
-            send_telegram_chat_message(chat_id, "Avval sayt login/paroli bilan ulaning: /login login parol")
-            return JsonResponse({"ok": True})
-
-        if text.startswith(("/today", "/summary")):
-            send_telegram_chat_message(chat_id, _telegram_menu_text(subscription.organization))
+            generate_ai_agent_response(self.organization, form.cleaned_data["prompt"])
+        except AIAgentError as error:
+            messages.error(request, f"AI agent xatosi: {error}")
         else:
-            send_telegram_chat_message(chat_id, "Buyruqlar: /today, /summary")
-        return JsonResponse({"ok": True})
-
-
-class TelegramWebhookSetupView(LoginRequiredMixin, TemplateView):
-    login_url = reverse_lazy("login")
-
-    def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_superuser:
-            return HttpResponse("Ruxsat yo'q", status=403, content_type="text/plain")
-        return super().dispatch(request, *args, **kwargs)
-
-    def get(self, request, *args, **kwargs):
-        if not os.environ.get("TELEGRAM_BOT_TOKEN"):
-            return HttpResponse("TELEGRAM_BOT_TOKEN sozlanmagan.", status=400, content_type="text/plain")
-        webhook_url = request.build_absolute_uri(reverse("telegram_webhook"))
-        output = StringIO()
-        try:
-            call_command("set_telegram_webhook", "--url", webhook_url, stdout=output)
-        except CommandError as error:
-            return HttpResponse(f"Webhook sozlashda xato: {error}", status=400, content_type="text/plain")
-        status = telegram_api_call("getWebhookInfo")
-        return HttpResponse(
-            "Telegram webhook tayyor.\n"
-            f"URL: {webhook_url}\n\n"
-            f"Holat:\n{json.dumps(status, ensure_ascii=False, indent=2)}",
-            content_type="text/plain",
-        )
-
-
-class TelegramWebhookStatusView(LoginRequiredMixin, TemplateView):
-    login_url = reverse_lazy("login")
-
-    def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_superuser:
-            return HttpResponse("Ruxsat yo'q", status=403, content_type="text/plain")
-        return super().dispatch(request, *args, **kwargs)
-
-    def get(self, request, *args, **kwargs):
-        bot = telegram_api_call("getMe")
-        webhook = telegram_api_call("getWebhookInfo")
-        return HttpResponse(
-            json.dumps({"bot": bot, "webhook": webhook}, ensure_ascii=False, indent=2),
-            content_type="application/json",
-        )
+            messages.success(request, "AI agent javobi tayyorlandi.")
+        return redirect("profile")
 
 
 class LatestMenuWordExportView(LoginRequiredMixin, TemplateView):
@@ -665,6 +632,9 @@ class LatestMenuWordExportView(LoginRequiredMixin, TemplateView):
         organization = get_user_organization(request.user)
         if not organization:
             return redirect("login")
+        if not user_has_org_permission(request.user, "view_reports", organization):
+            messages.error(request, "Hisobotlarni ko'rish uchun ruxsat yo'q.")
+            return redirect("profile")
         menu_day = (
             MenuDay.objects.filter(organization=organization)
             .prefetch_related("entries__dish__ingredients__product")
@@ -720,6 +690,9 @@ class AllMenuWordExportView(LoginRequiredMixin, TemplateView):
         organization = get_user_organization(request.user)
         if not organization:
             return redirect("login")
+        if not user_has_org_permission(request.user, "view_reports", organization):
+            messages.error(request, "Hisobotlarni ko'rish uchun ruxsat yo'q.")
+            return redirect("profile")
         menu_days = list(
             MenuDay.objects.filter(organization=organization)
             .prefetch_related("entries__dish__ingredients__product")
@@ -766,6 +739,56 @@ class AllMenuWordExportView(LoginRequiredMixin, TemplateView):
         response = HttpResponse(
             content,
             content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+        response["Content-Disposition"] = f'attachment; filename="{file_name}"'
+        return response
+
+
+class AllMenuExcelExportView(LoginRequiredMixin, TemplateView):
+    login_url = reverse_lazy("login")
+
+    def dispatch(self, request, *args, **kwargs):
+        organization = get_user_organization(request.user)
+        if not organization:
+            return redirect("login")
+        if not user_has_org_permission(request.user, "view_reports", organization):
+            messages.error(request, "Hisobotlarni ko'rish uchun ruxsat yo'q.")
+            return redirect("profile")
+
+        menu_days = list(
+            MenuDay.objects.filter(organization=organization)
+            .prefetch_related("entries__dish__ingredients__product")
+            .order_by("date")
+        )
+        if not menu_days:
+            return redirect("profile")
+
+        rows = [["Sana", "Ovqatlanish vaqti", "Taom", "Porsiya", "Kaloriya", "Narx"]]
+        total_cost = Decimal("0")
+        total_calories = 0
+        for menu_day in menu_days:
+            for entry in menu_day.entries.select_related("mealtime", "dish").all():
+                total_cost += entry.total_cost
+                total_calories += entry.total_calories
+                rows.append(
+                    [
+                        menu_day.date.isoformat(),
+                        entry.mealtime.title,
+                        entry.dish.name,
+                        entry.portions,
+                        entry.total_calories,
+                        f"{entry.total_cost.quantize(Decimal('1'))}",
+                    ]
+                )
+        rows.append(["Jami", "", "", "", total_calories, f"{total_cost.quantize(Decimal('1'))}"])
+
+        start_date = menu_days[0].date.isoformat()
+        end_date = menu_days[-1].date.isoformat()
+        file_name = f"{organization.name}-{start_date}-{end_date}-barcha-xarajatlar.xlsx"
+        content = build_xlsx(rows, "Xarajatlar")
+        response = HttpResponse(
+            content,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
         response["Content-Disposition"] = f'attachment; filename="{file_name}"'
         return response

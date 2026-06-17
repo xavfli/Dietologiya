@@ -2,28 +2,68 @@
 {% block title %}Yangiliklar | Dietologiya{% endblock %}
 
 {% block content %}
-<section class="inner-hero mb-5">
-    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3">
-        <div>
-            <span class="eyebrow text-dark">YANGILIKLAR BO'LIMI</span>
-            <h1 class="section-title mb-2">Platformadagi so'nggi yangilanishlar</h1>
-            <p class="text-muted mb-0">Dietologiya tizimidagi funksiyalar, texnik o'zgarishlar va amaliy yutuqlar.</p>
+<section class="page-hero-grid mb-5">
+    <div class="page-hero-copy">
+        <span class="eyebrow text-dark">YANGILIKLAR BO'LIMI</span>
+        <h1 class="section-title mb-2">Platformadagi so'nggi yangilanishlar</h1>
+        <p class="text-muted mb-0">
+            Mavsumiy menyu, parhez filtrlari, Word/Excel hisobotlar, dashboard analitika va xavfsizlik yangiliklari.
+        </p>
+        <div class="page-stats mt-4">
+            <div><span>Reliz</span><strong>{{ news_items|length }}</strong><em>yangilik</em></div>
+            <div><span>Fokus</span><strong>SaaS</strong><em>dashboard</em></div>
+            <div><span>Til</span><strong>UZ</strong><em>interfeys</em></div>
         </div>
-        <a href="{% url 'home' %}" class="btn btn-outline-dark">Bosh sahifaga qaytish</a>
     </div>
+    <aside class="page-hero-visual" aria-label="Yangiliklar preview">
+        <div class="news-radar">
+            <div class="news-radar__pulse"></div>
+            <div class="news-radar__card news-radar__card--one">
+                <span>Mavsumiy menyu</span>
+                <strong>Yangi modul</strong>
+            </div>
+            <div class="news-radar__card news-radar__card--two">
+                <span>AI agent</span>
+                <strong>Tahlil</strong>
+            </div>
+            <div class="news-radar__card news-radar__card--three">
+                <span>Hisobot</span>
+                <strong>Word/Excel</strong>
+            </div>
+        </div>
+    </aside>
 </section>
 
 <section class="mb-5">
-    <div class="row row-cols-1 row-cols-md-2 g-4">
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
         {% for item in news_items %}
         <div class="col">
-            <article class="feature-card h-100">
-                <div class="feature-index">{{ item.date }}</div>
-                <h3>{{ item.title }}</h3>
-                <p class="mb-0">{{ item.text }}</p>
+            <article class="news-preview-card news-preview-card--large h-100">
+                <span>{{ item.date }}</span>
+                <h2>{{ item.title }}</h2>
+                <p>{{ item.text }}</p>
+                <div class="news-preview-card__meta">
+                    <em>Dietologiya</em>
+                    <strong>Yangilanish</strong>
+                </div>
             </article>
         </div>
         {% endfor %}
+    </div>
+</section>
+
+<section class="final-cta-section mb-5">
+    <div class="container">
+        <div class="final-cta">
+            <div>
+                <span class="eyebrow text-dark">YANGILIKLARDAN KEYIN</span>
+                <h2>So'nggi imkoniyatlarni profil va kabinet ichida sinab ko'ring.</h2>
+            </div>
+            <div class="final-cta__actions">
+                <a href="{% url 'login' %}" class="btn btn-primary rounded-pill px-4 py-3">Profilga kirish</a>
+                <a href="{% url 'organization_list' %}" class="btn btn-outline-light rounded-pill px-4 py-3">Tashkilotlar</a>
+            </div>
+        </div>
     </div>
 </section>
 {% endblock %}

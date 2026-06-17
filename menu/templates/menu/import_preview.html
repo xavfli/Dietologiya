@@ -1,0 +1,71 @@
+{% extends 'menu/base.html' %}
+{% block title %}Import Preview | Dietologiya{% endblock %}
+
+{% block content %}
+<section class="inner-hero mb-5">
+    <span class="eyebrow text-dark">IMPORT PREVIEW</span>
+    <h1 class="section-title">{{ organization.name }} uchun fayl tekshiruvi</h1>
+    <p class="text-muted mb-0">{{ preview.summary }}</p>
+</section>
+
+<section class="mb-5">
+    <div class="content-panel">
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <h2 class="mb-3">Topilgan workbooklar</h2>
+                {% for workbook in preview.xlsx_files %}
+                <div class="import-preview-row">
+                    <div>
+                        <strong>{{ workbook.name }}</strong>
+                        {% if workbook.note %}<span>{{ workbook.note }}</span>{% endif %}
+                    </div>
+                    <div>
+                        {% if workbook.sheets %}
+                        <em>{{ workbook.sheets|length }} sheet · {{ workbook.rows }} row · {{ workbook.columns }} col</em>
+                        {% else %}
+                        <em>ZIP ichida</em>
+                        {% endif %}
+                    </div>
+                </div>
+                {% empty %}
+                <div class="empty-panel">Import qilinadigan workbook topilmadi.</div>
+                {% endfor %}
+            </div>
+            <div class="col-lg-4">
+                <h2 class="mb-3">Ogohlantirishlar</h2>
+                {% for warning in preview.warnings %}
+                <div class="notice notice--warning">
+                    <strong>Tekshiruv</strong>
+                    <span>{{ warning }}</span>
+                </div>
+                {% empty %}
+                <div class="notice notice--info">
+                    <strong>Tayyor</strong>
+                    <span>Asosiy xatolik topilmadi.</span>
+                </div>
+                {% endfor %}
+                {% if preview.skipped_files %}
+                <div class="notice notice--warning">
+                    <strong>O'tkazib yuboriladi</strong>
+                    <span>{{ preview.skipped_files|join:", " }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="final-cta-section mb-5">
+    <div class="container">
+        <div class="final-cta">
+            <div>
+                <span class="eyebrow text-dark">IMPORT</span>
+                <h2>Agar fayl to'g'ri bo'lsa, profilga qaytib importni boshlang.</h2>
+            </div>
+            <div class="final-cta__actions">
+                <a href="{% url 'profile' %}" class="btn btn-primary rounded-pill px-4 py-3">Profilga qaytish</a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -2,49 +2,69 @@
 {% block title %}Profilga kirish | Dietologiya{% endblock %}
 
 {% block content %}
-<section class="row justify-content-center">
-    <div class="col-lg-5">
-        <div class="content-panel">
-            <div class="section-heading">
-                <span class="eyebrow text-dark">TASHKILOT PROFIli</span>
-                <h1 class="section-title">Kabinetga kirish</h1>
-                <p class="text-muted mb-0">Natijalar va o'z retseptlaringizni ko'rish uchun login qiling.</p>
+<section class="login-split">
+    <div class="login-panel">
+        <span class="eyebrow text-dark">TASHKILOT PROFILI</span>
+        <h1>Kabinetga kirish</h1>
+        <p>Natijalar, retseptlar, menyu kalendari, import va hisobotlarni ko'rish uchun login qiling.</p>
+        <form method="post" class="login-form">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+            <div>
+                <label class="form-label" for="{{ form.username.id_for_label }}">Login</label>
+                {{ form.username }}
             </div>
-            <form method="post" class="mt-4">
-                {% csrf_token %}
-                {{ form.non_field_errors }}
-                <div class="mb-3">
-                    <label class="form-label" for="{{ form.username.id_for_label }}">Login</label>
-                    {{ form.username }}
+            <div>
+                <label class="form-label" for="{{ form.password.id_for_label }}">Parol</label>
+                <div class="password-field" data-password-field>
+                    {{ form.password }}
+                    <button
+                        type="button"
+                        class="password-field__toggle"
+                        data-password-toggle
+                        aria-label="Parolni ochish"
+                        aria-pressed="false"
+                    >
+                        <svg class="password-field__icon password-field__icon--show" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        <svg class="password-field__icon password-field__icon--hide" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M3 3l18 18"></path>
+                            <path d="M10.6 10.6A3 3 0 0 0 13.4 13.4"></path>
+                            <path d="M9.9 5.2A10.1 10.1 0 0 1 12 5c6 0 9.5 7 9.5 7a17.6 17.6 0 0 1-2.8 3.6"></path>
+                            <path d="M6.3 6.9C3.8 8.7 2.5 12 2.5 12s3.5 7 9.5 7a9.9 9.9 0 0 0 4.1-.9"></path>
+                        </svg>
+                    </button>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label" for="{{ form.password.id_for_label }}">Parol</label>
-                    <div class="password-field" data-password-field>
-                        {{ form.password }}
-                        <button
-                            type="button"
-                            class="password-field__toggle"
-                            data-password-toggle
-                            aria-label="Parolni ochish"
-                            aria-pressed="false"
-                        >
-                            <svg class="password-field__icon password-field__icon--show" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                            <svg class="password-field__icon password-field__icon--hide" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M3 3l18 18"></path>
-                                <path d="M10.6 10.6A3 3 0 0 0 13.4 13.4"></path>
-                                <path d="M9.9 5.2A10.1 10.1 0 0 1 12 5c6 0 9.5 7 9.5 7a17.6 17.6 0 0 1-2.8 3.6"></path>
-                                <path d="M6.3 6.9C3.8 8.7 2.5 12 2.5 12s3.5 7 9.5 7a9.9 9.9 0 0 0 4.1-.9"></path>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-                <button type="submit" class="btn btn-accent w-100">Kirish</button>
-            </form>
-        </div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100 rounded-pill py-3">Kirish</button>
+        </form>
     </div>
+    <aside class="login-preview" aria-label="Kabinet dashboard preview">
+        <div class="login-preview__top">
+            <div>
+                <span>Dietologiya</span>
+                <strong>Tashkilot kabineti</strong>
+            </div>
+            <em>Secure</em>
+        </div>
+        <div class="login-preview__grid">
+            <div><span>Menyu</span><strong>Hafta</strong></div>
+            <div><span>Xarajat</span><strong>12.5 mln</strong></div>
+            <div><span>Alert</span><strong>2 ta</strong></div>
+            <div><span>Bot</span><strong>/today</strong></div>
+        </div>
+        <div class="login-preview__calendar">
+            <span>Du</span><span>Se</span><span>Cho</span><span>Pa</span><span>Ju</span><span>Sha</span><span>Yak</span>
+            <strong>14</strong><strong>15</strong><strong>16</strong><strong>17</strong><strong>18</strong><strong>19</strong><strong>20</strong>
+        </div>
+        <div class="login-preview__rows">
+            <div><span>Excel/ZIP import</span><strong>Tayyor</strong></div>
+            <div><span>Word/Excel eksport</span><strong>Faol</strong></div>
+            <div><span>Audit log</span><strong>Yoziladi</strong></div>
+        </div>
+    </aside>
 </section>
 {% endblock %}
 

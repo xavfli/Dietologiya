@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import re
+import shutil
 import tempfile
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from zipfile import ZipFile
+from zipfile import BadZipFile, ZipFile
 
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
@@ -201,8 +203,27 @@ class Command(BaseCommand):
         if zip_path:
             if not zip_path.exists():
                 raise CommandError(f"Zip file not found: {zip_path}")
-            with ZipFile(zip_path) as archive:
-                archive.extractall(temp_dir)
+            try:
+                with ZipFile(zip_path) as archive:
+                    workbook_members = [
+                        member
+                        for member in archive.infolist()
+                        if not member.is_dir()
+                        and member.filename.lower().endswith(".xlsx")
+                        and not Path(member.filename).name.startswith("~$")
+                    ]
+                    if len(workbook_members) > settings.MENU_IMPORT_MAX_ARCHIVE_FILES:
+                        raise CommandError("ZIP ichida ruxsat etilganidan ko'p workbook bor.")
+                    total_size = sum(member.file_size for member in workbook_members)
+                    if total_size > settings.MENU_IMPORT_MAX_ARCHIVE_BYTES:
+                        raise CommandError("ZIP ochilgandagi umumiy hajm ruxsat etilgan limitdan katta.")
+                    for index, member in enumerate(workbook_members):
+                        target_name = f"{index:03d}-{Path(member.filename).name}"
+                        target_path = temp_dir / target_name
+                        with archive.open(member) as source, target_path.open("wb") as destination:
+                            shutil.copyfileobj(source, destination)
+            except BadZipFile as error:
+                raise CommandError("ZIP fayl buzilgan yoki noto'g'ri formatda.") from error
             root = temp_dir
         else:
             if not folder_path.exists():

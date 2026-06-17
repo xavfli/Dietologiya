@@ -14,7 +14,6 @@ from .models import (
     PriceHistory,
     Product,
     Season,
-    TelegramSubscription,
 )
 
 
@@ -104,9 +103,3 @@ class MenuAlertAdmin(admin.ModelAdmin):
     list_display = ("title", "organization", "menu_day", "severity", "is_resolved", "created_at")
     list_filter = ("severity", "is_resolved", "organization")
     search_fields = ("title", "message", "organization__name")
-
-
-@admin.register(TelegramSubscription)
-class TelegramSubscriptionAdmin(admin.ModelAdmin):
-    list_display = ("organization", "chat_id", "is_active", "daily_digest")
-    list_filter = ("is_active", "daily_digest")

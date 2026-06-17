@@ -5,7 +5,7 @@
 <svg class="visually-hidden" aria-hidden="true">
     <symbol id="icon-price" viewBox="0 0 24 24"><path d="M12 3v18"></path><path d="M17 7.5c-.8-1.1-2.3-1.8-4.2-1.8-2.3 0-4 1-4 2.7 0 4.2 8.5 1.8 8.5 6.2 0 1.8-1.8 3-4.4 3-2 0-3.8-.7-4.9-2"></path></symbol>
     <symbol id="icon-upload" viewBox="0 0 24 24"><path d="M12 16V4"></path><path d="M7 9l5-5 5 5"></path><path d="M5 20h14"></path></symbol>
-    <symbol id="icon-telegram" viewBox="0 0 24 24"><path d="M21 4L3 11.2l7 2.2L17 8l-5 7.5V20l3.2-3.1 4 2.9L21 4Z"></path></symbol>
+    <symbol id="icon-ai" viewBox="0 0 24 24"><path d="M12 3l1.8 5.1L19 10l-5.2 1.9L12 17l-1.8-5.1L5 10l5.2-1.9L12 3Z"></path><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z"></path></symbol>
     <symbol id="icon-chart" viewBox="0 0 24 24"><path d="M4 19V5"></path><path d="M4 19h16"></path><path d="M8 15l3-4 3 2 4-6"></path></symbol>
     <symbol id="icon-alert" viewBox="0 0 24 24"><path d="M12 3l10 18H2L12 3Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></symbol>
     <symbol id="icon-history" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.7"></path><path d="M4 5v5h5"></path><path d="M12 8v5l3 2"></path></symbol>
@@ -22,9 +22,12 @@
                 <p class="profile-hero__text">Bu sahifada tashkilotingiz uchun shakllangan menyu natijalari, parhez tarkibi va kunlik hisob-kitoblar ko'rsatiladi.</p>
             </div>
             <div class="profile-hero__actions">
+                {% if can_view_reports %}
                 <a href="{% url 'profile_export_word' %}" class="btn btn-outline-light btn-lg rounded-pill px-4">Bir kunlik xarajatlar</a>
                 <a href="{% url 'profile_export_all_word' %}" class="btn btn-outline-light btn-lg rounded-pill px-4">Barcha xarajatlar</a>
-                <a href="/organization-admin/" class="btn btn-accent btn-lg rounded-pill px-4">Tashkilot kabineti</a>
+                <a href="{% url 'profile_export_all_excel' %}" class="btn btn-outline-light btn-lg rounded-pill px-4">Excel eksport</a>
+                {% endif %}
+                <a href="{% url 'organization_admin:index' %}" class="btn btn-accent btn-lg rounded-pill px-4">Tashkilot kabineti</a>
             </div>
         </div>
     </div>
@@ -35,6 +38,7 @@
         <div class="profile-tool-grid">
             <div class="profile-tool-panel">
                 <h2 class="panel-title"><span class="panel-title__icon"><svg><use href="#icon-price"></use></svg></span>Narxlarni yangilash</h2>
+                {% if can_manage_prices %}
                 <form method="post" action="{% url 'profile_update_prices' %}">
                     {% csrf_token %}
                     <div class="import-help mb-3">
@@ -45,13 +49,23 @@
                     {{ price_form.city }}
                     <button class="btn btn-accent w-100 mt-3" type="submit">Narxlarni yangilash</button>
                 </form>
+                {% else %}
+                <div class="import-help mb-0">
+                    <strong>Ruxsat kerak:</strong>
+                    <span>Narxlarni yangilash direktor yoki hisobchi roli uchun ochiq.</span>
+                </div>
+                {% endif %}
             </div>
             <div class="profile-tool-panel">
                 <h2 class="panel-title"><span class="panel-title__icon"><svg><use href="#icon-upload"></use></svg></span>Excel/ZIP import</h2>
+                {% if can_manage_menu %}
                 <form method="post" action="{% url 'profile_import_menu' %}" enctype="multipart/form-data">
                     {% csrf_token %}
                     {{ upload_form.file }}
-                    <button class="btn btn-accent w-100 mt-3" type="submit">Faylni import qilish</button>
+                    <div class="profile-action-stack mt-3">
+                        <button class="btn btn-outline-success w-100" type="submit" formaction="{% url 'profile_import_preview' %}">Preview ko'rish</button>
+                        <button class="btn btn-accent w-100" type="submit">Faylni import qilish</button>
+                    </div>
                 </form>
                 <div class="import-help">
                     <strong>Nima import qiladi?</strong>
@@ -63,18 +77,62 @@
                     {% csrf_token %}
                     <button class="btn btn-outline-success w-100" type="submit">Ogohlantirishlarni tekshirish</button>
                 </form>
-            </div>
-            <div class="profile-tool-panel">
-                <h2 class="panel-title"><span class="panel-title__icon"><svg><use href="#icon-telegram"></use></svg></span>Telegram bot</h2>
-                <div class="import-help mb-3">
-                    <strong>Bot orqali kirish:</strong>
-                    <span>Telegramda botni oching va sayt login/parolingiz bilan ulang: <code>/login login parol</code></span>
-                    <span>Keyin <code>/today</code> yoki <code>/summary</code> yuborsangiz menyu va xarajatlar keladi.</span>
+                {% else %}
+                <div class="import-help mb-0">
+                    <strong>Ruxsat kerak:</strong>
+                    <span>Import va ogohlantirishlarni tekshirish direktor yoki oshpaz roli uchun ochiq.</span>
                 </div>
-                <a class="btn btn-accent w-100" href="https://t.me/dieta_info_bot" target="_blank" rel="noopener">Botga o'tish</a>
-                {% if request.user.is_superuser %}
-                <a class="btn btn-outline-success w-100 mt-3" href="{% url 'telegram_setup' %}">Webhookni sozlash</a>
                 {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="profile-insights mb-5" id="ai-agent">
+    <div class="profile-shell">
+        <div class="row g-4">
+            <div class="col-lg-5">
+                <div class="profile-tool-panel h-100 ai-agent-panel">
+                    <div class="ai-agent-panel__heading">
+                        <h2 class="panel-title mb-0"><span class="panel-title__icon"><svg><use href="#icon-ai"></use></svg></span>Dietolog AI agent</h2>
+                        <span class="ai-agent-status{% if ai_agent_config.configured %} ai-agent-status--ready{% endif %}">
+                            {% if ai_agent_config.configured %}Ulangan{% else %}Sozlanmagan{% endif %}
+                        </span>
+                    </div>
+                    <div class="import-help mb-3">
+                        <strong>{{ ai_agent_config.label }} · {{ ai_agent_config.model }}</strong>
+                        <span>Agent faqat tashkilotingizning menyu, xarajat va ogohlantirish ma'lumotlarini o'qiydi. Bazani o'zgartirmaydi.</span>
+                    </div>
+                    {% if can_view_reports %}
+                    <form method="post" action="{% url 'profile_ai_agent' %}">
+                        {% csrf_token %}
+                        <label class="form-label" for="{{ ai_agent_form.prompt.id_for_label }}">{{ ai_agent_form.prompt.label }}</label>
+                        {{ ai_agent_form.prompt }}
+                        <button class="btn btn-accent w-100 mt-3" type="submit">Agentdan javob olish</button>
+                    </form>
+                    {% else %}
+                    <div class="import-help mb-0">
+                        <strong>Ruxsat kerak:</strong>
+                        <span>AI agent tashkilot hisobotlarini ko'rish ruxsatiga ega foydalanuvchilar uchun ochiq.</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="profile-tool-panel cost-chart-panel">
+                    <h2 class="panel-title"><span class="panel-title__icon"><svg><use href="#icon-history"></use></svg></span>Agent javoblari</h2>
+                    <div class="ai-agent-history">
+                        {% for suggestion in ai_suggestions %}
+                        <article class="ai-suggestion">
+                            <div class="ai-suggestion__meta">{{ suggestion.created_at|date:"d.m.Y H:i" }}</div>
+                            <strong class="ai-suggestion__prompt">{{ suggestion.prompt }}</strong>
+                            <div class="ai-suggestion__response">{{ suggestion.response|linebreaksbr }}</div>
+                        </article>
+                        {% empty %}
+                        <p class="text-muted mb-0">Agentga hali savol berilmagan.</p>
+                        {% endfor %}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -124,7 +182,7 @@
                     {% endif %}
                 </div>
             </div>
-            <div class="col-lg-5">
+            <div class="col-lg-6">
                 <div class="profile-tool-panel h-100">
                     <h2 class="panel-title"><span class="panel-title__icon"><svg><use href="#icon-price"></use></svg></span>Eng ko'p xarajat qilayotgan mahsulotlar</h2>
                     {% for product in top_products %}
@@ -225,6 +283,37 @@
     </div>
 </section>
 
+{% if season_summaries %}
+<section class="profile-season-overview mb-5">
+    <div class="profile-shell">
+        <div class="section-heading profile-results__heading">
+            <span class="eyebrow text-dark">4 FASL TAOMNOMASI</span>
+            <h2 class="section-title">Sog'lom mavsumiy menyu holati</h2>
+        </div>
+        <div class="profile-season-grid">
+            {% for season in season_summaries %}
+            <article class="profile-season-card profile-season-card--{{ season.key }}">
+                <div class="profile-season-card__top">
+                    <span class="profile-season-card__label">{{ season.label }}</span>
+                    <a
+                        class="profile-season-card__link"
+                        href="?week={{ season.week_reference }}&day={{ season.day_reference }}#menu-calendar"
+                    >Haftani ko'rish</a>
+                </div>
+                <div class="profile-season-card__value">{{ season.days_count }} kun</div>
+                <div class="profile-season-card__metrics">
+                    <span>{{ season.people_total }} nafar</span>
+                    <span>{{ season.cost_total|floatformat:0 }} so'm</span>
+                    <span>{{ season.calories_total }} kal</span>
+                </div>
+                <div class="profile-season-card__date">Oxirgi menyu: {{ season.latest_date|date:"d.m.Y" }}</div>
+            </article>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
 <section class="profile-results">
     <div class="profile-shell">
         <div class="section-heading profile-results__heading">
@@ -233,7 +322,19 @@
         </div>
         {% if menu_summaries %}
         <div class="profile-calendar" data-profile-calendar>
-            <div class="profile-calendar__month">{{ calendar_month_label }}</div>
+            <div class="profile-calendar__header">
+                <a
+                    href="?week={{ calendar_prev_week }}#menu-calendar"
+                    class="profile-calendar__nav"
+                    aria-label="Oldingi hafta"
+                >&#8249;</a>
+                <div class="profile-calendar__month" id="menu-calendar">{{ calendar_month_label }}</div>
+                <a
+                    href="?week={{ calendar_next_week }}#menu-calendar"
+                    class="profile-calendar__nav"
+                    aria-label="Keyingi hafta"
+                >&#8250;</a>
+            </div>
             <div class="profile-calendar__weekdays">
                 {% for weekday in calendar_weekdays %}
                 <div class="profile-calendar__weekday">{{ weekday }}</div>
@@ -244,16 +345,19 @@
                 {% if day.summary %}
                 <button
                     type="button"
-                    class="profile-calendar__day{% if day.is_selected %} is-active{% endif %}{% if not day.is_current_month %} is-outside{% endif %}{% if day.is_today %} is-today{% endif %}"
+                    class="profile-calendar__day{% if day.is_selected %} is-active{% endif %}{% if day.is_today %} is-today{% endif %}"
                     data-day-trigger="{{ day.summary.day_key }}"
+                    data-day-date="{{ day.date|date:'Y-m-d' }}"
                     role="tab"
                     aria-selected="{% if day.is_selected %}true{% else %}false{% endif %}"
+                    aria-controls="panel-{{ day.summary.day_key }}"
+                    tabindex="{% if day.is_selected %}0{% else %}-1{% endif %}"
                 >
                     <span class="profile-calendar__day-number">{{ day.date|date:"d" }}</span>
                     <span class="profile-calendar__day-label">{{ day.date|date:"D" }}</span>
                 </button>
                 {% else %}
-                <div class="profile-calendar__day is-empty{% if not day.is_current_month %} is-outside{% endif %}{% if day.is_today %} is-today{% endif %}{% if day.is_selected %} is-active{% endif %}">
+                <div class="profile-calendar__day is-empty{% if day.is_today %} is-today{% endif %}{% if day.is_selected %} is-active{% endif %}">
                     <span class="profile-calendar__day-number">{{ day.date|date:"d" }}</span>
                     {% if day.is_today %}<span class="profile-calendar__day-label">Bugun</span>{% endif %}
                 </div>
@@ -281,13 +385,14 @@
             </div>
 
             <div class="profile-calendar__details">
-                {% if not today_summary %}
-                <div class="empty-panel">
-                    Bugungi kun uchun retseptlar hali kiritilmagan. Tashkilot kabinetidan bugungi menyu qo'shilsa, shu yerda avtomatik chiqadi.
-                </div>
-                {% endif %}
-                {% for summary in week_menu_summaries %}
-                <article class="profile-menu-card mb-4{% if selected_day_id != summary.day_key %} d-none{% endif %}" data-day-panel="{{ summary.day_key }}">
+                {% for summary in calendar_menu_summaries %}
+                <article
+                    id="panel-{{ summary.day_key }}"
+                    class="profile-menu-card mb-4{% if selected_day_id != summary.day_key %} d-none{% endif %}"
+                    data-day-panel="{{ summary.day_key }}"
+                    role="tabpanel"
+                    {% if selected_day_id != summary.day_key %}hidden{% endif %}
+                >
                     <div class="profile-menu-card__top">
                         <div class="profile-menu-card__date">
                             <h3 class="mb-1">{{ summary.day.date|date:"d.m.Y" }}</h3>
@@ -331,7 +436,7 @@
                     {% endfor %}
                 </article>
                 {% empty %}
-                <div class="empty-panel">Joriy haftada menyu ma'lumotlari yo'q.</div>
+                <div class="empty-panel">Bu haftada menyu ma'lumotlari yo'q.</div>
                 {% endfor %}
             </div>
         </div>

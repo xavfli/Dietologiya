@@ -2,8 +2,8 @@ from django.contrib import admin
 from django.contrib.admin import AdminSite
 from django.db.models import Q
 
-from .models import Diet, Dish, MealTime, MenuAlert, MenuDay, MenuEntry, PriceHistory, Product, Season
-from .services import get_user_organization
+from .models import Diet, Dish, DishIngredient, MealTime, MenuAlert, MenuDay, MenuEntry, PriceHistory, Product, Season
+from .services import get_user_organization, user_has_org_permission
 
 
 class OrganizationAdminSite(AdminSite):
@@ -36,16 +36,23 @@ class OrganizationScopedAdmin(admin.ModelAdmin):
         return bool(get_user_organization(request.user))
 
     def has_view_permission(self, request, obj=None):
-        return bool(get_user_organization(request.user))
+        organization = self.get_organization(request)
+        return bool(organization) and (
+            obj is None or getattr(obj, self.organization_field + "_id", None) == organization.id
+        )
 
     def has_add_permission(self, request):
-        return bool(get_user_organization(request.user))
+        return user_has_org_permission(request.user, "manage_menu", self.get_organization(request))
 
     def has_change_permission(self, request, obj=None):
-        return bool(get_user_organization(request.user))
+        return self.has_view_permission(request, obj) and user_has_org_permission(
+            request.user,
+            "manage_menu",
+            self.get_organization(request),
+        )
 
     def has_delete_permission(self, request, obj=None):
-        return bool(get_user_organization(request.user))
+        return self.has_change_permission(request, obj)
 
 
 class OrganizationReadOnlyMixin:
@@ -87,12 +94,33 @@ class OrganizationMealTimeAdmin(OrganizationReadOnlyMixin, admin.ModelAdmin):
     ordering = ("order",)
 
 
+class OrganizationDishIngredientInline(admin.TabularInline):
+    model = DishIngredient
+    extra = 1
+    fields = ("product", "grams")
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "product":
+            kwargs["queryset"] = Product.objects.filter(organization=get_user_organization(request.user))
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def has_add_permission(self, request, obj=None):
+        return user_has_org_permission(request.user, "manage_menu", get_user_organization(request.user))
+
+    def has_change_permission(self, request, obj=None):
+        return self.has_add_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return self.has_add_permission(request, obj)
+
+
 @admin.register(Dish, site=organization_admin_site)
-class OrganizationDishAdmin(OrganizationReadOnlyMixin, OrganizationScopedAdmin):
+class OrganizationDishAdmin(OrganizationScopedAdmin):
     list_display = ("name", "diet", "duration_minutes", "total_calories", "total_cost")
     list_filter = ("diet",)
     fields = ("name", "diet", "duration_minutes", "description")
     search_fields = ("name",)
+    inlines = (OrganizationDishIngredientInline,)
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "diet":
@@ -101,11 +129,20 @@ class OrganizationDishAdmin(OrganizationReadOnlyMixin, OrganizationScopedAdmin):
 
 
 @admin.register(Product, site=organization_admin_site)
-class OrganizationProductAdmin(OrganizationReadOnlyMixin, OrganizationScopedAdmin):
+class OrganizationProductAdmin(OrganizationScopedAdmin):
     list_display = ("name", "unit", "protein", "fat", "carbs", "calories", "price_per_kg")
     list_filter = ("unit",)
     search_fields = ("name",)
     fields = ("name", "unit", "protein", "fat", "carbs", "calories", "price_per_kg")
+
+    def has_add_permission(self, request):
+        return user_has_org_permission(request.user, "manage_prices", self.get_organization(request))
+
+    def has_change_permission(self, request, obj=None):
+        return user_has_org_permission(request.user, "manage_prices", self.get_organization(request))
+
+    def has_delete_permission(self, request, obj=None):
+        return user_has_org_permission(request.user, "manage_prices", self.get_organization(request))
 
 
 @admin.register(PriceHistory, site=organization_admin_site)
@@ -122,6 +159,11 @@ class OrganizationMenuAlertAdmin(OrganizationScopedAdmin):
     list_display = ("title", "menu_day", "severity", "is_resolved", "created_at")
     list_filter = ("severity", "is_resolved")
     search_fields = ("title", "message")
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "menu_day":
+            kwargs["queryset"] = MenuDay.objects.filter(organization=self.get_organization(request))
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
 @admin.register(MenuDay, site=organization_admin_site)
@@ -147,16 +189,23 @@ class OrganizationMenuEntryAdmin(admin.ModelAdmin):
         return bool(get_user_organization(request.user))
 
     def has_view_permission(self, request, obj=None):
-        return bool(get_user_organization(request.user))
+        organization = self.get_organization(request)
+        return bool(organization) and (
+            obj is None or obj.menu_day.organization_id == organization.id
+        )
 
     def has_add_permission(self, request):
-        return bool(get_user_organization(request.user))
+        return user_has_org_permission(request.user, "manage_menu", self.get_organization(request))
 
     def has_change_permission(self, request, obj=None):
-        return bool(get_user_organization(request.user))
+        return self.has_view_permission(request, obj) and user_has_org_permission(
+            request.user,
+            "manage_menu",
+            self.get_organization(request),
+        )
 
     def has_delete_permission(self, request, obj=None):
-        return bool(get_user_organization(request.user))
+        return self.has_change_permission(request, obj)
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         organization = self.get_organization(request)
@@ -167,7 +216,3 @@ class OrganizationMenuEntryAdmin(admin.ModelAdmin):
         elif db_field.name == "mealtime":
             kwargs["queryset"] = MealTime.objects.all()
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
-
-    def save_model(self, request, obj, form, change):
-        obj.menu_day.organization = self.get_organization(request)
-        super().save_model(request, obj, form, change)

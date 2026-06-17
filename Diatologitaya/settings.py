@@ -4,11 +4,20 @@ from urllib.parse import urlsplit, urlunsplit
 
 import dj_database_url
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
+
+
+def env_bool(name, default=False):
+    return os.environ.get(name, str(default)).strip().lower() in {"1", "true", "yes", "on"}
+
+
+DEBUG = env_bool("DJANGO_DEBUG", True)
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY") or os.environ.get("SECRET_KEY", "replace-this-in-production")
-DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
+if not DEBUG and SECRET_KEY == "replace-this-in-production":
+    raise ImproperlyConfigured("DJANGO_SECRET_KEY production muhitida majburiy.")
 ALLOWED_HOSTS = [
     host.strip()
     for host in os.environ.get("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,dietologiya.local").split(",")
@@ -34,6 +43,8 @@ default_sqlite_dir.mkdir(parents=True, exist_ok=True)
 default_sqlite_path = Path(os.environ.get("DJANGO_SQLITE_PATH", str(default_sqlite_dir / "db.sqlite3")))
 default_database_url = f"sqlite:///{default_sqlite_path.as_posix()}"
 database_url = os.environ.get("DATABASE_URL", "").strip().strip("\"'")
+if not DEBUG and not database_url:
+    raise ImproperlyConfigured("DATABASE_URL production muhitida majburiy.")
 known_database_schemes = {
     "cockroach",
     "mssql",
@@ -72,6 +83,8 @@ try:
     ):
         raise ValueError("Incomplete PostgreSQL DATABASE_URL")
 except Exception:
+    if not DEBUG:
+        raise ImproperlyConfigured("Production DATABASE_URL noto'g'ri yoki to'liq emas.")
     default_database_config = dj_database_url.parse(
         default_database_url,
         conn_max_age=600,
@@ -122,6 +135,8 @@ WSGI_APPLICATION = "Diatologitaya.wsgi.application"
 DATABASES = {
     "default": default_database_config
 }
+if env_bool("DJANGO_REQUIRE_POSTGRES", not DEBUG) and default_database_config["ENGINE"] != "django.db.backends.postgresql":
+    raise ImproperlyConfigured("Production muhitida PostgreSQL DATABASE_URL talab qilinadi.")
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -150,6 +165,23 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+MENU_IMPORT_MAX_BYTES = int(os.environ.get("MENU_IMPORT_MAX_BYTES", str(25 * 1024 * 1024)))
+MENU_IMPORT_MAX_ARCHIVE_BYTES = int(os.environ.get("MENU_IMPORT_MAX_ARCHIVE_BYTES", str(100 * 1024 * 1024)))
+MENU_IMPORT_MAX_ARCHIVE_FILES = int(os.environ.get("MENU_IMPORT_MAX_ARCHIVE_FILES", "100"))
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", not DEBUG)
+SESSION_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SAMESITE = "Lax"
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "same-origin"
+SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_SECURE_HSTS_SECONDS", "31536000" if not DEBUG else "0"))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_HSTS_PRELOAD = env_bool("DJANGO_SECURE_HSTS_PRELOAD", not DEBUG)
+X_FRAME_OPTIONS = "DENY"
 
 JAZZMIN_SETTINGS = {
     "site_title": "Dietologiya Admin",

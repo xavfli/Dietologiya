@@ -160,7 +160,6 @@ class ImportJob(models.Model):
         EXCEL = "excel", _("Excel import")
         PRICE_URL = "price_url", _("Internet narx")
         PRICE_AI = "price_ai", _("AI narx")
-        MENU_AI = "menu_ai", _("AI menyu")
 
     class Status(models.TextChoices):
         PENDING = "pending", _("Kutilmoqda")
@@ -376,18 +375,3 @@ class AISuggestion(models.Model):
 
     def __str__(self):
         return f"AI tavsiya - {self.organization} - {self.created_at:%Y-%m-%d}"
-
-
-class TelegramSubscription(models.Model):
-    organization = models.OneToOneField(Organization, on_delete=models.CASCADE, related_name="telegram_subscription")
-    chat_id = models.CharField(max_length=120)
-    is_active = models.BooleanField(default=True)
-    daily_digest = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        verbose_name = "Telegram sozlama"
-        verbose_name_plural = "Telegram sozlamalari"
-
-    def __str__(self):
-        return f"{self.organization} - {self.chat_id}"
