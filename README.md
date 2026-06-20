@@ -1,6 +1,6 @@
-# Dietologiya
+# SihatMenyu
 
-`Dietologiya` - Django asosida qurilgan ovqatlanish va parhez boshqaruv platformasi. Loyiha tashkilotlar uchun kunlik menyu, taom tarkibi, mahsulot sarfi, oziq qiymati va xarajatlarni markazlashgan tarzda yuritishga yordam beradi.
+`SihatMenyu` - Django asosida qurilgan ovqatlanish va parhez boshqaruv platformasi. Loyiha tashkilotlar uchun kunlik menyu, taom tarkibi, mahsulot sarfi, oziq qiymati va xarajatlarni markazlashgan tarzda yuritishga yordam beradi.
 
 ## Imkoniyatlar
 
@@ -70,7 +70,7 @@ pip install -r requirements.txt
 ```bash
 set DJANGO_DEBUG=True
 set DJANGO_SECRET_KEY=change-me
-set DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost,dietologiya.local
+set DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost,sihatmenyu.local,dietologiya.local
 ```
 
 5. Migratsiyalarni ishga tushiring:
@@ -202,7 +202,7 @@ Profil sahifasida quyidagi boshqaruvlar mavjud:
 
 ## AI Agent
 
-Profil sahifasidagi `Dietolog AI agent` tashkilotning oxirgi menyulari, umumiy xarajatlari, faol ogohlantirishlari va mahsulot ehtiyojlari asosida savollarga javob beradi. Agent ma'lumotlarni faqat o'qiydi va bazani o'zgartirmaydi.
+Profil sahifasidagi `SihatMenyu AI agent` tashkilotning oxirgi menyulari, umumiy xarajatlari, faol ogohlantirishlari va mahsulot ehtiyojlari asosida savollarga javob beradi. Agent ma'lumotlarni faqat o'qiydi va bazani o'zgartirmaydi.
 
 Gemini bilan ulash:
 

@@ -20,7 +20,7 @@ if not DEBUG and SECRET_KEY == "replace-this-in-production":
     raise ImproperlyConfigured("DJANGO_SECRET_KEY production muhitida majburiy.")
 ALLOWED_HOSTS = [
     host.strip()
-    for host in os.environ.get("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,dietologiya.local").split(",")
+    for host in os.environ.get("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost,sihatmenyu.local,dietologiya.local").split(",")
     if host.strip()
 ]
 CSRF_TRUSTED_ORIGINS = [
@@ -184,9 +184,9 @@ SECURE_HSTS_PRELOAD = env_bool("DJANGO_SECURE_HSTS_PRELOAD", not DEBUG)
 X_FRAME_OPTIONS = "DENY"
 
 JAZZMIN_SETTINGS = {
-    "site_title": "Dietologiya Admin",
-    "site_header": "Dietologiya",
-    "site_brand": "Dietologiya",
+    "site_title": "SihatMenyu Admin",
+    "site_header": "SihatMenyu",
+    "site_brand": "SihatMenyu",
     "welcome_sign": "Ovqatlanish tizimi boshqaruvi",
     "site_logo": "menu/favicon.svg",
     "site_icon": "menu/favicon.svg",
