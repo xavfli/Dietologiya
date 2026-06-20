@@ -140,9 +140,9 @@
 
 <section class="profile-insights mb-5">
     <div class="profile-shell">
-        <div class="row g-4">
-            <div class="col-lg-7">
-                <div class="profile-tool-panel h-100">
+        <div class="row g-4 align-items-stretch">
+            <div class="col-lg-6 d-flex">
+                <div class="profile-tool-panel h-100 w-100">
                     <h2 class="panel-title"><span class="panel-title__icon"><svg><use href="#icon-chart"></use></svg></span>Oylik xarajat grafigi</h2>
                     {% if monthly_cost_chart %}
                     <div class="donut-chart-wrap">
@@ -182,8 +182,8 @@
                     {% endif %}
                 </div>
             </div>
-            <div class="col-lg-6">
-                <div class="profile-tool-panel h-100">
+            <div class="col-lg-6 d-flex">
+                <div class="profile-tool-panel h-100 w-100">
                     <h2 class="panel-title"><span class="panel-title__icon"><svg><use href="#icon-price"></use></svg></span>Eng ko'p xarajat qilayotgan mahsulotlar</h2>
                     {% for product in top_products %}
                     <div class="mini-row">
