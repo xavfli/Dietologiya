@@ -1,6 +1,6 @@
-# Dietologiya
+# SihatMenyu
 
-`Dietologiya` - Django asosida qurilgan ovqatlanish va parhez boshqaruv platformasi. Loyiha tashkilotlar uchun kunlik menyu, taom tarkibi, mahsulot sarfi, oziq qiymati va xarajatlarni markazlashgan tarzda yuritishga yordam beradi.
+`SihatMenyu` - Django asosida qurilgan ovqatlanish va parhez boshqaruv platformasi. Loyiha tashkilotlar uchun kunlik menyu, taom tarkibi, mahsulot sarfi, oziq qiymati va xarajatlarni markazlashgan tarzda yuritishga yordam beradi.
 
 ## Imkoniyatlar
 
@@ -70,7 +70,7 @@ pip install -r requirements.txt
 ```bash
 set DJANGO_DEBUG=True
 set DJANGO_SECRET_KEY=change-me
-set DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost,dietologiya.local
+set DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost,sihatmenyu.local,dietologiya.local
 ```
 
 5. Migratsiyalarni ishga tushiring:
@@ -111,6 +111,8 @@ Demo login ma'lumotlari:
 - Tashkilot: `Sog'lom Avlod MTT`
 - Login: `soglom_avlod`
 - Parol: `OrgDemo2026!`
+
+`Sog'lom Avlod MTT` demo profili qish, bahor, yoz va kuz fasllari uchun alohida taomlar va menyu kunlari bilan to'ldiriladi. Profil sahifasida 4 fasl bo'yicha kunlar soni, jami taomlanuvchi, xarajat va kaloriya xulosasi ko'rinadi.
 
 ## ZIP Orqali Import
 
@@ -196,32 +198,29 @@ Profil sahifasida quyidagi boshqaruvlar mavjud:
 - Oylik xarajat grafigi va eng ko'p xarajat qilayotgan mahsulotlar
 - Mahsulot ehtiyoji ro'yxati
 - Narxlar tarixi
-- AI menyu tavsiyasi
-- Telegram chat ID saqlash
+- Tashkilot menyu, xarajat va ogohlantirishlarini tahlil qiluvchi AI agent
 
-Telegram xulosasini yuborish:
+## AI Agent
 
-```bash
-set TELEGRAM_BOT_TOKEN=123456:bot-token
-python manage.py send_telegram_digest --organization "Tashkilot nomi"
-```
+Profil sahifasidagi `SihatMenyu AI agent` tashkilotning oxirgi menyulari, umumiy xarajatlari, faol ogohlantirishlari va mahsulot ehtiyojlari asosida savollarga javob beradi. Agent ma'lumotlarni faqat o'qiydi va bazani o'zgartirmaydi.
 
-Telegram botni webhook bilan ulash:
+Gemini bilan ulash:
 
 ```bash
-set TELEGRAM_BOT_TOKEN=123456:bot-token
-python manage.py set_telegram_webhook --url "https://your-site.onrender.com/telegram/webhook/"
+set AI_AGENT_PROVIDER=gemini
+set GEMINI_API_KEY=your-key
+set GEMINI_AGENT_MODEL=gemini-3.5-flash
 ```
 
-Yoki deploydan keyin superuser bilan saytga kirib `/telegram/setup/` sahifasini oching. Bu sahifa `TELEGRAM_BOT_TOKEN` env qiymati orqali webhookni avtomatik ulaydi.
+OpenAI bilan ulash:
 
-Foydalanuvchi botda sayt login/paroli bilan ulanadi:
-
-```text
-/login login parol
-/today
-/summary
+```bash
+set AI_AGENT_PROVIDER=openai
+set OPENAI_API_KEY=your-key
+set OPENAI_AGENT_MODEL=gpt-5.4-mini
 ```
+
+`AI_AGENT_PROVIDER` berilmasa, tizim avval `GEMINI_API_KEY`, keyin `OPENAI_API_KEY` qiymatini tekshiradi. API kalitlarni kodga yoki GitHub repositoryga yozmang.
 
 Rollar uchun `Tashkilot a'zolari` modelidan foydalanuvchini tashkilotga bog'lang. Direktor, oshpaz, hisobchi va kuzatuvchi rollari mavjud.
 
@@ -247,10 +246,12 @@ Rollar uchun `Tashkilot a'zolari` modelidan foydalanuvchini tashkilotga bog'lang
 - `DJANGO_SUPERUSER_USERNAME` - admin login
 - `DJANGO_SUPERUSER_PASSWORD` - admin parol
 - `DJANGO_SUPERUSER_EMAIL` - admin email, ixtiyoriy
-- `OPENAI_API_KEY` - AI menyu tavsiyasi va Korzinka Go qidiruvi uchun OpenAI API kaliti
-- `OPENAI_MENU_MODEL` - AI menyu modeli, ixtiyoriy, default `gpt-5`
-- `OPENAI_PRICE_MODEL` - AI narx qidirish modeli, ixtiyoriy, default `gpt-5`
-- `TELEGRAM_BOT_TOKEN` - Telegram xulosalari uchun bot token, ixtiyoriy
+- `OPENAI_API_KEY` - AI agent fallback va Korzinka Go qidiruvi uchun OpenAI API kaliti
+- `GEMINI_API_KEY` - Gemini AI agent uchun API kaliti
+- `AI_AGENT_PROVIDER` - `gemini`, `openai` yoki `auto`
+- `GEMINI_AGENT_MODEL` - Gemini agent modeli
+- `OPENAI_AGENT_MODEL` - OpenAI agent modeli
+- `OPENAI_PRICE_MODEL` - AI narx qidirish modeli
 - `PYTHON_VERSION` - `3.12`
 - `WEB_CONCURRENCY` - `4`
 
@@ -260,7 +261,7 @@ Render `RENDER_EXTERNAL_HOSTNAME` qiymatini avtomatik beradi. Shu sabab `.onrend
 `<Postgres Internal Database URL>` yoki `<Generate qilingan secret>` kabi placeholder matnlarni qoldirmang; ularning o'rniga haqiqiy qiymat yozing.
 Static fayllar Render build paytida WhiteNoise orqali compressed holatda yig'iladi. Vendor JavaScript ichidagi yo'q `.map` havolalar buildni yiqitmasligi uchun manifest talab qilmaydigan compressed storage ishlatiladi.
 
-AI tavsiyalar Renderda ishlashi uchun `OPENAI_API_KEY` Render dashboarddagi Environment variables bo'limiga qo'shilishi va servis redeploy qilinishi kerak. API keyni kodga yoki GitHubga yozmang.
+AI agent Renderda ishlashi uchun tanlangan provider API kaliti Environment variables bo'limiga qo'shilishi va servis redeploy qilinishi kerak. API keyni kodga yoki GitHubga yozmang.
 
 ### Renderda Admin Yaratish
 
@@ -288,8 +289,20 @@ Production rejimida quyidagi xatolar maxsus sahifa orqali ko'rsatiladi:
 - `DJANGO_DEBUG`
 - `DJANGO_ALLOWED_HOSTS`
 - `DJANGO_CSRF_TRUSTED_ORIGINS`
+- `DJANGO_REQUIRE_POSTGRES`
+- `DJANGO_SECURE_SSL_REDIRECT`
+- `DJANGO_SECURE_HSTS_SECONDS`
+- `DJANGO_SECURE_HSTS_PRELOAD`
 - `DATABASE_URL`
 - `OPENAI_API_KEY`
+- `AI_AGENT_PROVIDER`
+- `GEMINI_API_KEY`
+- `GEMINI_AGENT_MODEL`
+- `OPENAI_AGENT_MODEL`
+- `AI_AGENT_TIMEOUT`
+- `MENU_IMPORT_MAX_BYTES`
+- `MENU_IMPORT_MAX_ARCHIVE_BYTES`
+- `MENU_IMPORT_MAX_ARCHIVE_FILES`
 - `DJANGO_SQLITE_PATH`
 - `DJANGO_ADMIN_PATH`
 - `DJANGO_SUPERUSER_USERNAME`
