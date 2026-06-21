@@ -112,7 +112,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "Diatologitaya.urls"
+ROOT_URLCONF = "Dietologiya.urls"
 
 TEMPLATES = [
     {
@@ -130,7 +130,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "Diatologitaya.wsgi.application"
+WSGI_APPLICATION = "Dietologiya.wsgi.application"
 
 DATABASES = {
     "default": default_database_config

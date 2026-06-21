@@ -39,7 +39,7 @@ URL manzillar:
 
 ## Loyiha Tuzilmasi
 
-- `Diatologitaya/` - Django konfiguratsiyasi
+- `Dietologiya/` - Django konfiguratsiyasi
 - `menu/` - modellar, viewlar, admin, URL va management commandlar
 - `menu/templates/` - foydalanuvchi sahifalari
 - `static/` - CSS, JavaScript, rasm va ikonlar
@@ -235,7 +235,7 @@ Rollar uchun `Tashkilot a'zolari` modelidan foydalanuvchini tashkilotga bog'lang
 - Runtime: `Python 3`
 - Branch: `main`
 - Build Command: `./build.sh`
-- Start Command: `gunicorn Diatologitaya.wsgi --log-file -`
+- Start Command: `gunicorn Dietologiya.wsgi --log-file -`
 
 6. Environment variables bo'limiga qo'shing:
 

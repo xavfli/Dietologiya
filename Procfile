@@ -1,1 +1,1 @@
-web: gunicorn Diatologitaya.wsgi --log-file -
+web: gunicorn Dietologiya.wsgi --log-file -
