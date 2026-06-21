@@ -184,9 +184,9 @@ SECURE_HSTS_PRELOAD = env_bool("DJANGO_SECURE_HSTS_PRELOAD", not DEBUG)
 X_FRAME_OPTIONS = "DENY"
 
 JAZZMIN_SETTINGS = {
-    "site_title": "SihatMenyu Admin",
-    "site_header": "SihatMenyu",
-    "site_brand": "SihatMenyu",
+    "site_title": "Dietologiya Admin",
+    "site_header": "Dietologiya",
+    "site_brand": "Dietologiya",
     "welcome_sign": "Ovqatlanish tizimi boshqaruvi",
     "site_logo": "menu/favicon.svg",
     "site_icon": "menu/favicon.svg",

@@ -1,6 +1,6 @@
-# SihatMenyu
+# Dietologiya
 
-`SihatMenyu` - Django asosida qurilgan ovqatlanish va parhez boshqaruv platformasi. Loyiha tashkilotlar uchun kunlik menyu, taom tarkibi, mahsulot sarfi, oziq qiymati va xarajatlarni markazlashgan tarzda yuritishga yordam beradi.
+`Dietologiya` - Django asosida qurilgan ovqatlanish va parhez boshqaruv platformasi. Loyiha tashkilotlar uchun kunlik menyu, taom tarkibi, mahsulot sarfi, oziq qiymati va xarajatlarni markazlashgan tarzda yuritishga yordam beradi.
 
 ## Imkoniyatlar
 
@@ -202,7 +202,7 @@ Profil sahifasida quyidagi boshqaruvlar mavjud:
 
 ## AI Agent
 
-Profil sahifasidagi `SihatMenyu AI agent` tashkilotning oxirgi menyulari, umumiy xarajatlari, faol ogohlantirishlari va mahsulot ehtiyojlari asosida savollarga javob beradi. Agent ma'lumotlarni faqat o'qiydi va bazani o'zgartirmaydi.
+Profil sahifasidagi `Dietologiya AI agent` tashkilotning oxirgi menyulari, umumiy xarajatlari, faol ogohlantirishlari va mahsulot ehtiyojlari asosida savollarga javob beradi. Agent ma'lumotlarni faqat o'qiydi va bazani o'zgartirmaydi.
 
 Gemini bilan ulash:
 
